@@ -68,7 +68,9 @@ async def api_score(api_answer: str, response: str, weight: float, temperature: 
     try:
         loop = asyncio.get_running_loop()
         similarity = await loop.run_in_executor(None, calculate_text_similarity, api_answer, response)
-
+        bt.logging.info("--------------*****---------------------------------------*****-----------------")
+        bt.logging.info(f"| Exact Calculated similary in in api_score not counting weight: {round(float(similarity) * 100,2)} percent.|")
+        bt.logging.info("----------------------------------**********----------------------------------")
         words_in_response = len(response.split())
         words_in_api = len(api_answer.split())
 

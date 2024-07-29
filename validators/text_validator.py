@@ -36,11 +36,17 @@ class TextValidator(BaseValidator):
 
     async def organic(self, metagraph, query: dict[str, list[dict[str, str]]]) -> AsyncIterator[tuple[int, str]]:
         for uid, messages in query.items():
-            syn = StreamPrompting(messages=messages, model=self.model, seed=self.seed, max_tokens=self.max_tokens, temperature=self.temperature, provider=self.provider, top_p=self.top_p, top_k=self.top_k)
-            bt.logging.info(
-                f"Sending {syn.model} {self.query_type} request to uid: {uid}, "
-                f"timeout {self.timeout}: {syn.messages[0]['content']}"
+            syn = StreamPrompting(
+                messages=messages,
+                model=self.model,
+                seed=self.seed,
+                max_tokens=self.max_tokens,
+                temperature=self.temperature,
+                provider=self.provider,
+                top_p=self.top_p,
+                top_k=self.top_k,
             )
+            bt.logging.info(f"Sending {syn.model} {self.query_type} request to uid: {uid}, " f"timeout {self.timeout}: {syn.messages[0]['content']}")
 
             # self.wandb_data["prompts"][uid] = messages
             responses = await self.dendrite(
@@ -102,12 +108,18 @@ class TextValidator(BaseValidator):
             for uid in available_uids:
                 prompt = await self.get_question(len(available_uids))
                 uid_to_question[uid] = prompt
-                messages = [{'role': 'user', 'content': prompt}]
-                syn = StreamPrompting(messages=messages, model=self.model, seed=self.seed, max_tokens=self.max_tokens, temperature=self.temperature, provider=self.provider, top_p=self.top_p, top_k=self.top_k)
-                bt.logging.info(
-                    f"Sending {syn.model} {self.query_type} request to uid: {uid}, "
-                    f"timeout {self.timeout}: {syn.messages[0]['content']}"
+                messages = [{"role": "user", "content": prompt}]
+                syn = StreamPrompting(
+                    messages=messages,
+                    model=self.model,
+                    seed=self.seed,
+                    max_tokens=self.max_tokens,
+                    temperature=self.temperature,
+                    provider=self.provider,
+                    top_p=self.top_p,
+                    top_k=self.top_k,
                 )
+                bt.logging.info(f"Sending {syn.model} {self.query_type} request to uid: {uid}, " f"timeout {self.timeout}: {syn.messages[0]['content']}")
                 task = self.query_miner(metagraph, uid, syn)
                 query_tasks.append(task)
                 self.wandb_data["prompts"][uid] = prompt
@@ -118,6 +130,8 @@ class TextValidator(BaseValidator):
             bt.logging.error(f"error in start_query = {traceback.format_exc()}")
 
     def should_i_score(self):
+        #  Eager Validator always says yes
+        return True
         random_number = random.random()
         will_score_all = random_number < 1 / 12
         bt.logging.info(f"Random Number: {random_number}, Will score text responses: {will_score_all}")
@@ -125,13 +139,13 @@ class TextValidator(BaseValidator):
 
     async def call_api(self, prompt: str, provider: str) -> str:
         if provider == "OpenAI":
-            return await call_openai([{'role': 'user', 'content': prompt}], self.temperature, self.model, self.seed, self.max_tokens)
+            return await call_openai([{"role": "user", "content": prompt}], self.temperature, self.model, self.seed, self.max_tokens)
         elif provider == "Anthropic":
             return await call_anthropic(prompt, self.temperature, self.model, self.max_tokens, self.top_p, self.top_k)
         elif provider == "Gemini":
             return await call_gemini(prompt, self.temperature, self.model, self.max_tokens, self.top_p, self.top_k)
         elif provider == "Claude":
-            return await call_claude([{'role': 'user', 'content': prompt}], self.temperature, self.model, self.max_tokens, self.top_p, self.top_k)
+            return await call_claude([{"role": "user", "content": prompt}], self.temperature, self.model, self.max_tokens, self.top_p, self.top_k)
         else:
             bt.logging.error(f"provider {provider} not found")
 
@@ -141,7 +155,6 @@ class TextValidator(BaseValidator):
         uid_to_question: dict[int, str],  # uid -> prompt
         metagraph: bt.metagraph,
     ) -> tuple[torch.Tensor, dict[int, float], dict]:
-
         scores = torch.zeros(len(metagraph.hotkeys))
         uid_scores_dict = {}
         response_tasks = []
@@ -178,7 +191,7 @@ class TextValidator(BaseValidator):
                 uid_scores_dict[uid] = 0
 
         if uid_scores_dict != {}:
+            bt.logging.info(" -SCORE!!" * 10)
             bt.logging.info(f"text_scores is {uid_scores_dict}")
+            bt.logging.info(" *" * 80)
         return scores, uid_scores_dict, self.wandb_data
-
-

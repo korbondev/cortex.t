@@ -20,7 +20,7 @@ import wandb
 # from stability_sdk import client as stability_client
 from config import check_config, get_config
 
-from openai import AsyncOpenAI, OpenAI
+from openai import AsyncOpenAI, OpenAI, OpenAIError
 from anthropic import AsyncAnthropic
 
 # from stability_sdk import stability_api
@@ -624,14 +624,36 @@ class StreamMiner:
                     # log_error.append(str(max_tokens))
 
                     # log_error.append(str("- " * 60))
-                    response = await openAI_client.chat.completions.create(
-                        messages=messages,
-                        stream=True,
-                        model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
-                        temperature=temperature,
-                        seed=seed,
-                        max_tokens=max_tokens,
-                    )
+                    try:
+                        response = await openAI_client.chat.completions.create(
+                            messages=messages,
+                            stream=True,
+                            model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
+                            temperature=temperature,
+                            seed=seed,
+                            max_tokens=max_tokens,
+                        )
+                    except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:
+                        if "500" in str(err):
+                            alternate_client = random_openai_client()
+                            response = await alternate_client.chat.completions.create(
+                                messages=messages,
+                                stream=True,
+                                model=model,  # This is the real opanai model reqested
+                                temperature=temperature,
+                                seed=seed,
+                                max_tokens=max_tokens,
+                            )
+                        else:
+                            asyncio.sleep(0.01)
+                            response = await openAI_client.chat.completions.create(
+                                messages=messages,
+                                stream=True,
+                                model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
+                                temperature=temperature,
+                                seed=seed,
+                                max_tokens=max_tokens,
+                            )
                     buffer = []
                     n = 1
                     async for chunk in response:

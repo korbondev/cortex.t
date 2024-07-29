@@ -20,7 +20,7 @@ import wandb
 # from stability_sdk import client as stability_client
 from config import check_config, get_config
 
-from openai import AsyncOpenAI, OpenAI
+from openai import AsyncOpenAI, OpenAI, OpenAIError
 from anthropic import AsyncAnthropic
 
 # from stability_sdk import stability_api
@@ -78,7 +78,7 @@ if check_endpoint_overrides():
     # for api_key in ENDPOINT_OVERRIDE_MAP['MuliImageModelKeys']:
     #     image_multi_clients
 
-    random_image_client = image_client_lfu_closure(
+    random_openai_client = image_client_lfu_closure(
         image_client_keys=ENDPOINT_OVERRIDE_MAP["MuliImageModelKeys"],
         base_url=ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(alt_image_service, {}).get("api", ""),
     )
@@ -608,30 +608,52 @@ class StreamMiner:
 
                 if provider == "OpenAI":
                     # Test seeds + higher temperature
-                    log_error = []
-                    log_error.append(str("><" * 60))
-                    log_error.append(str("Messages: "))
-                    log_error.append(str(messages))
-                    log_error.append(str("Model requested: "))
-                    log_error.append(str(ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o")))
-                    log_error.append(str("so this this every paramater passed: "))
+                    # log_error = []
+                    # log_error.append(str("><" * 60))
+                    # log_error.append(str("Messages: "))
+                    # log_error.append(str(messages))
+                    # log_error.append(str("Model requested: "))
+                    # log_error.append(str(ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o")))
+                    # log_error.append(str("so this this every paramater passed: "))
 
-                    log_error.append(str(messages))
-                    log_error.append(str(True))
-                    log_error.append(str(ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o")))
-                    log_error.append(str(temperature))
-                    log_error.append(str(seed))
-                    log_error.append(str(max_tokens))
+                    # log_error.append(str(messages))
+                    # log_error.append(str(True))
+                    # log_error.append(str(ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o")))
+                    # log_error.append(str(temperature))
+                    # log_error.append(str(seed))
+                    # log_error.append(str(max_tokens))
 
-                    log_error.append(str("- " * 60))
-                    response = await openAI_client.chat.completions.create(
-                        messages=messages,
-                        stream=True,
-                        model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
-                        temperature=temperature,
-                        seed=seed,
-                        max_tokens=max_tokens,
-                    )
+                    # log_error.append(str("- " * 60))
+                    try:
+                        response = await openAI_client.chat.completions.create(
+                            messages=messages,
+                            stream=True,
+                            model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
+                            temperature=temperature,
+                            seed=seed,
+                            max_tokens=max_tokens,
+                        )
+                    except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:
+                        if "500" in str(err):
+                            alternate_client = random_openai_client()
+                            response = await alternate_client.chat.completions.create(
+                                messages=messages,
+                                stream=True,
+                                model=model,  # This is the real opanai model reqested
+                                temperature=temperature,
+                                seed=seed,
+                                max_tokens=max_tokens,
+                            )
+                        else:
+                            asyncio.sleep(0.01)
+                            response = await openAI_client.chat.completions.create(
+                                messages=messages,
+                                stream=True,
+                                model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
+                                temperature=temperature,
+                                seed=seed,
+                                max_tokens=max_tokens,
+                            )
                     buffer = []
                     n = 1
                     async for chunk in response:
@@ -794,8 +816,8 @@ class StreamMiner:
 
             except Exception as e:
                 bt.logging.error(f"error in _prompt_provider_overrides {e}\n{traceback.format_exc()}")
-                bt.logging.error("\n".join(log_error))
-                log_error = []
+                # bt.logging.error("\n".join(log_error))
+                # log_error = []
 
         token_streamer = partial(_prompt_provider_overrides, synapse) if OVERRIDE_ENDPOINTS else partial(_prompt, synapse)
 
@@ -825,7 +847,7 @@ class StreamMiner:
 
             if provider == "OpenAI":
                 if OVERRIDE_ENDPOINTS:
-                    randomized_image_client = random_image_client()
+                    randomized_image_client = random_openai_client()
                     meta = await randomized_image_client.images.generate(
                         model=model,
                         prompt=nsfw_tools.remove_nsfw(messages),

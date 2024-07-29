@@ -174,6 +174,9 @@ class TextValidator(BaseValidator):
         scoring_tasks = []
         for (uid, _), api_answer in zip(response_tasks, api_responses):
             if api_answer:
+                bt.logging.info(f"Validator Requested Provider: {self.provider}")
+                bt.logging.info(f"Validator api_answer:")
+                bt.logging.info(f"BEGIN:|{api_answer}|:END")
                 response = next(res for u, res in query_responses if u == uid)  # Find the matching response
                 task = cortext.reward.api_score(api_answer, response, self.weight, self.temperature, self.provider)
                 scoring_tasks.append((uid, task))

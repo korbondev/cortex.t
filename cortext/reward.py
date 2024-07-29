@@ -81,6 +81,11 @@ async def api_score(api_answer: str, response: str, weight: float, temperature: 
         if words_in_response <= word_count_over_threshold and words_in_response >= word_count_under_threshold:
             score = weight * similarity
         else:
+            bt.logging.info("SCORED ZERO, WHY?")
+            bt.logging.info("if words_in_response <= word_count_over_threshold and words_in_response >= word_count_under_threshold:")
+            bt.logging.info(
+                f"was TRUE... words_in_response: {words_in_response} | word_count_over_threshold: {word_count_over_threshold} |  word_count_under_threshold: {word_count_under_threshold} "
+            )
             score = 0
 
         return score

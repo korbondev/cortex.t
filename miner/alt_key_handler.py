@@ -1,7 +1,7 @@
 from os import environ, path
 from random import choice as random_choice
 from typing import Callable
-
+from time import sleep
 
 from msgspec import yaml
 from sys import argv
@@ -77,7 +77,7 @@ def image_client_lfu_closure(image_client_keys: list[str], base_url: str = "http
     Returns:
         Callable[[], AsyncOpenAI]: A closure function that returns the least frequently used AsyncOpenAI client object.
     """
-
+    threadlock = False
     image_multi_clients = [
         [
             AsyncOpenAI(
@@ -91,6 +91,13 @@ def image_client_lfu_closure(image_client_keys: list[str], base_url: str = "http
     ]
 
     def image_client_lfu_with_random_tie_breaking() -> AsyncOpenAI:
+        nonlocal threadlock
+        while True:
+            if not threadlock:
+                threadlock = True
+                break
+            sleep(0.001)
+
         nonlocal image_multi_clients
 
         min_frequency = min(item[1] for item in image_multi_clients)
@@ -100,7 +107,7 @@ def image_client_lfu_closure(image_client_keys: list[str], base_url: str = "http
         image_client = random_choice(least_used_clients)
 
         image_client[1] += 1
-
+        threadlock = False
         return image_client[0]
 
     return image_client_lfu_with_random_tie_breaking

@@ -3,6 +3,7 @@ import os
 import traceback
 from openai import OpenAI
 from openai import AsyncOpenAI
+from msgspec import json
 
 os.environ["OPENAI_API_KEY"] = "YOURAPIKEY"
 # OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
@@ -21,10 +22,17 @@ client = AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=60)
 async def send_openai_request(prompt, engine="gpt-4-1106-preview"):
     try:
         messages = [{"role": "user", "content": "Explore the impact of Thomas Edison's inventions on modern society, such as the light bulb and phonograph"}]
+        model = "openai/gpt-4o"
+        extra_body = {
+            "transforms": [],
+            "provider": {"allow_fallbacks": False},
+            "allow_fallbacks": False,
+        }
         stream = await client.chat.completions.create(
+            extra_body=extra_body,
             messages=messages,
             stream=True,
-            model="openai/gpt-4o",
+            model=model,
             seed=1234,
             temperature=0.0001,
             max_tokens=4096,

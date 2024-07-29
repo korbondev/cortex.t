@@ -596,6 +596,12 @@ class StreamMiner:
                 bt.logging.error(f"error in _prompt {e}\n{traceback.format_exc()}")
 
         async def _prompt_provider_overrides(synapse, send: Send):
+            extra_body = {
+                "transforms": [],
+                "provider": {"allow_fallbacks": False},
+                "allow_fallbacks": False,
+            }
+
             try:
                 provider = synapse.provider
                 model = synapse.model
@@ -627,6 +633,7 @@ class StreamMiner:
                     try:
                         response = await openAI_client.chat.completions.create(
                             messages=messages,
+                            extra_body=extra_body,
                             stream=True,
                             model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
                             temperature=temperature,
@@ -638,6 +645,7 @@ class StreamMiner:
                             alternate_client = random_openai_client()
                             response = await alternate_client.chat.completions.create(
                                 messages=messages,
+                                extra_body=extra_body,
                                 stream=True,
                                 model=model,  # This is the real opanai model reqested
                                 temperature=temperature,
@@ -648,6 +656,7 @@ class StreamMiner:
                             asyncio.sleep(0.01)
                             response = await openAI_client.chat.completions.create(
                                 messages=messages,
+                                extra_body=extra_body,
                                 stream=True,
                                 model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
                                 temperature=temperature,
@@ -739,6 +748,7 @@ class StreamMiner:
                     response = await claude_client.chat.completions.create(
                         model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "anthropic/claude-3-opus"),
                         messages=filtered_messages,
+                        extra_body=extra_body,
                         # temperature=temperature,
                         stream=True,
                         # seed=seed,
@@ -776,6 +786,7 @@ class StreamMiner:
                     response = await google_genai_client.chat.completions.create(
                         model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "google/gemini-pro"),
                         messages=messages,
+                        extra_body=extra_body,
                         temperature=temperature,
                         stream=True,
                         # seed=seed,

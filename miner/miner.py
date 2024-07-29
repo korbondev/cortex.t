@@ -664,11 +664,15 @@ class StreamMiner:
                                 max_tokens=max_tokens,
                             )
                     buffer = []
-                    n = 1
+                    # n = 1
+                    rand_n = tuple(range(1, 15))
+                    from random import choice as random_choice
+
                     async for chunk in response:
                         token = chunk.choices[0].delta.content or ""
                         buffer.append(token)
-                        if len(buffer) == n:
+                        # if len(buffer) >= n:
+                        if len(buffer) >= random_choice(rand_n):
                             joined_buffer = "".join(buffer)
                             await send(
                                 {
@@ -677,6 +681,7 @@ class StreamMiner:
                                     "more_body": True,
                                 }
                             )
+                            bt.logging.info(f"Streamed {len(buffer)} tokens: ")
                             bt.logging.info(f"Streamed tokens: {joined_buffer}")
                             buffer = []
 
@@ -689,6 +694,7 @@ class StreamMiner:
                                 "more_body": False,
                             }
                         )
+                        bt.logging.info(f"Streamed last {len(buffer)} tokens: ")
                         bt.logging.info(f"Streamed tokens: {joined_buffer}")
 
                 elif provider == "Anthropic":

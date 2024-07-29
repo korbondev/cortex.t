@@ -86,6 +86,9 @@ async def api_score(api_answer: str, response: str, weight: float, temperature: 
             bt.logging.info(
                 f"was TRUE... words_in_response: {words_in_response} | word_count_over_threshold: {word_count_over_threshold} |  word_count_under_threshold: {word_count_under_threshold} "
             )
+            bt.logging.info(f"Validator Requested Provider: {provider}")
+            bt.logging.info(f"Validator api_answer:")
+            bt.logging.info(f"BEGIN:|{api_answer}|:END")
             score = 0
 
         return score

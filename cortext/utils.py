@@ -380,7 +380,7 @@ async def call_openai(messages, temperature, model, seed=1234, max_tokens=2048, 
                 top_p=top_p,
             )
             response = response.choices[0].message.content
-            bt.logging.trace(f"validator response is {response}")
+            # bt.logging.trace(f"validator response is {response}")
             return response
 
         except Exception as e:

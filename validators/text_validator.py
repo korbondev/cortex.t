@@ -174,7 +174,14 @@ class TextValidator(BaseValidator):
         scoring_tasks = []
         for (uid, _), api_answer in zip(response_tasks, api_responses):
             if api_answer:
+                from difflib import Differ
+
                 response = next(res for u, res in query_responses if u == uid)  # Find the matching response
+                bt.logging.info(f"validator response is {api_answer}")
+                bt.logging.info(f"Miner response is {response}")
+                d = Differ()
+                difference = "".join(d.compare(api_answer.splitlines(True), response.splitlines(True)))
+                bt.logging.info(f"Miner response is {difference}")
                 task = cortext.reward.api_score(api_answer, response, self.weight, self.temperature, self.provider)
                 scoring_tasks.append((uid, task))
 

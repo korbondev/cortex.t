@@ -686,7 +686,7 @@ class StreamMiner:
                                 client=openAI_client,
                             )
 
-                    send_stream_body["body"] = "".join(response).encode("utf-8")
+                    send_stream_body["body"] = response.encode("utf-8")
                     send_stream_body["more_body"] = False
                     bt.logging.info("Sending all of the response at once with no tokens, just one big string.")
                     await send(send_stream_body)

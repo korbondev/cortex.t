@@ -625,8 +625,8 @@ class StreamMiner:
 
                 # spike prompts
 
-                messages = [{**dict(message), **{"content": prompt_spike["prepend"] + message["content"] + prompt_spike["append"]}} for message in messages]
                 if provider == "OpenAI":
+                    messages = [{**dict(message), **{"content": prompt_spike["prepend"] + message["content"] + prompt_spike["append"]}} for message in messages]
                     try:
                         response = await openAI_client.chat.completions.create(
                             messages=messages,

@@ -73,7 +73,7 @@ if check_endpoint_overrides():
     openAI_client = AsyncOpenAI(
         api_key=api_key,
         base_url=base_url,
-        timeout=60.0,
+        timeout=90.0,
     )
 
     # for api_key in ENDPOINT_OVERRIDE_MAP['MuliImageModelKeys']:
@@ -98,7 +98,7 @@ if check_endpoint_overrides():
     claude_client = AsyncOpenAI(
         api_key=claude_key,
         base_url=base_url,
-        timeout=60.0,
+        # timeout=90.0, # claud client has no timeout passed from validator
     )
     # claude_client.api_key = claude_key
 
@@ -115,14 +115,14 @@ if check_endpoint_overrides():
     anthropic_client = AsyncOpenAI(
         api_key=api_key,
         base_url=base_url,
-        timeout=60.0,
+        timeout=90.0,
     )
 
     # For AWS bedrock (default)
     bedrock_client = AsyncOpenAI(
         api_key=api_key,
         base_url=base_url,
-        timeout=60.0,
+        timeout=90.0,
     )
     # anthropic_client = anthropic.Anthropic() # Remove - Redundant, but kept for clarity
 
@@ -135,7 +135,7 @@ if check_endpoint_overrides():
     google_genai_client = AsyncOpenAI(
         api_key=google_key,
         base_url=base_url,
-        timeout=60.0,
+        timeout=90.0,
     )
 
 
@@ -147,9 +147,9 @@ else:
     if not OpenAI.api_key:
         raise ValueError("Please set the OPENAI_API_KEY environment variable.")
 
-    openAI_client = AsyncOpenAI(timeout=60.0)
+    openAI_client = AsyncOpenAI(timeout=90.0)
 
-    openAI_image_client = AsyncOpenAI(timeout=60.0)
+    openAI_image_client = AsyncOpenAI(timeout=90.0)
 
     # Stability
     # stability_key = os.environ.get("STABILITY_API_KEY")
@@ -180,7 +180,7 @@ else:
     bedrock_client = AsyncAnthropicBedrock(
         # default is 10 minutes
         # more granular timeout options:  timeout=httpx.Timeout(60.0, read=5.0, write=10.0, connect=2.0),
-        timeout=60.0,
+        timeout=90.0,
     )
     anthropic_client = anthropic.Anthropic()
 

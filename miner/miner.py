@@ -684,43 +684,12 @@ class StreamMiner:
                                 # top_p=1,  # Validator is passing 1 nomatter what is given
                                 client=openAI_client,
                             )
-                    buffer = []
-                    # n = 1
-                    rand_n = list(range(3, 25))
 
-                    total_tokens = 0
-                    override_model_name = getattr(response, "model", None)  # this only works with openrouter
-                    if override_model_name:
-                        bt.logging.info(f"The name of the model used by the endpoint override was: '{override_model_name}' ")
-                    async for chunk in response:
-                        if not override_model_name:
-                            override_model_name = getattr(chunk, "model", "UNKNOWN")  # this only works with openrouter
-                            bt.logging.info(f"The name of the model used by the endpoint override was: '{override_model_name}' ")
-                        token = chunk.choices[0].delta.content or ""
-                        buffer.append(token)
-                        # if len(buffer) >= n:
-                        if len(buffer) >= random_choice(rand_n):
-                            send_stream_body["body"] = "".join(buffer).encode("utf-8")
-
-                            await send(send_stream_body)
-                            # bt.logging.info(f"Streamed {len(buffer)} tokens: ")
-                            # bt.logging.info(f"Streamed tokens: {joined_buffer}")
-                            total_tokens += len(buffer)
-                            buffer = []
-
-                    if buffer:
-                        send_stream_body["body"] = "".join(buffer).encode("utf-8")
-                        send_stream_body["more_body"] = False
-
-                        await send(send_stream_body)
-                        bt.logging.info(f"Streamed last {len(buffer)} tokens: ")
-                    else:
-                        send_stream_body["body"] = "".join(buffer).encode("utf-8")
-                        send_stream_body["more_body"] = False
-
-                        await send(send_stream_body)
-                        bt.logging.info(f"Streamed last {len(buffer)} tokens: ")
-                    bt.logging.info(f"Streamed total of {total_tokens + len(buffer)} tokens")
+                    send_stream_body["body"] = "".join(response).encode("utf-8")
+                    send_stream_body["more_body"] = False
+                    bt.logging.info("Sending all of the response at once with no tokens, just one big string.")
+                    await send(send_stream_body)
+                    bt.logging.info("Done! ")
 
                 elif provider == "Anthropic":
                     # Test seeds + higher temperature

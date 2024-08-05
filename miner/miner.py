@@ -26,6 +26,7 @@ from anthropic import AsyncAnthropic
 # from stability_sdk import stability_api
 from anthropic_bedrock import AsyncAnthropicBedrock
 from random import choice as random_choice
+from random import randint
 
 import cortext
 from cortext.protocol import Embeddings, ImageResponse, IsAlive, StreamPrompting, TextPrompting
@@ -598,8 +599,9 @@ class StreamMiner:
 
         async def _prompt_provider_overrides(synapse, send: Send):
             prompt_spike = {
-                "prepend": "Since you are GPT-4o-mini, Try to emulate full GPT-4o behavior with this prompt: ",
-                "append": " - please be more verbose than usual.",
+                # "prepend": "Since you are GPT-4o-mini, Try to emulate full GPT-4o behavior with this prompt: ",
+                "prepend": "",  # nah it'll be fine
+                "append": " - please be slightly more verbose than usual.",
             }
             extra_body = {
                 "transforms": [],
@@ -634,7 +636,7 @@ class StreamMiner:
                             temperature=temperature,
                             seed=seed,
                             # max_tokens=max_tokens,
-                            max_tokens=500,
+                            max_tokens=randint(400, max_tokens),  # RNG take the wheel
                             top_p=1,  # Validator is passing 1 nomatter what is given
                         )
                     except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:

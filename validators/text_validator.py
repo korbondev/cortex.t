@@ -41,9 +41,7 @@ class TextValidator(BaseValidator):
             "timestamps": {},
         }
 
-    async def organic(
-        self, metagraph, query: dict[str, list[dict[str, str]]]
-    ) -> AsyncIterator[tuple[int, str]]:
+    async def organic(self, metagraph, query: dict[str, list[dict[str, str]]]) -> AsyncIterator[tuple[int, str]]:
         for uid, messages in query.items():
             syn = StreamPrompting(
                 messages=messages,
@@ -55,10 +53,7 @@ class TextValidator(BaseValidator):
                 top_p=self.top_p,
                 top_k=self.top_k,
             )
-            bt.logging.info(
-                f"Sending {syn.model} {self.query_type} request to uid: {uid}, "
-                f"timeout {self.timeout}: {syn.messages[0]['content']}"
-            )
+            bt.logging.info(f"Sending {syn.model} {self.query_type} request to uid: {uid}, " f"timeout {self.timeout}: {syn.messages[0]['content']}")
 
             # self.wandb_data["prompts"][uid] = messages
             responses = await self.dendrite(
@@ -95,9 +90,7 @@ class TextValidator(BaseValidator):
             query_tasks = []
             uid_to_question = {}
             # Randomly choose the provider based on specified probabilities
-            providers = (
-                ["OpenAI"] * 95 + ["Anthropic"] * 0 + ["Gemini"] * 0 + ["Claude"] * 5
-            )
+            providers = ["OpenAI"] * 95 + ["Anthropic"] * 0 + ["Gemini"] * 0 + ["Claude"] * 5
             self.provider = random.choice(providers)
 
             if self.provider == "Anthropic":
@@ -133,10 +126,7 @@ class TextValidator(BaseValidator):
                     top_p=self.top_p,
                     top_k=self.top_k,
                 )
-                bt.logging.info(
-                    f"Sending {syn.model} {self.query_type} request to uid: {uid}, "
-                    f"timeout {self.timeout}: {syn.messages[0]['content']}"
-                )
+                bt.logging.info(f"Sending {syn.model} {self.query_type} request to uid: {uid}, " f"timeout {self.timeout}: {syn.messages[0]['content']}")
                 task = self.query_miner(metagraph, uid, syn)
                 query_tasks.append(task)
                 self.wandb_data["prompts"][uid] = prompt
@@ -151,9 +141,7 @@ class TextValidator(BaseValidator):
         return True
         random_number = random.random()
         will_score_all = random_number < 1 / 12
-        bt.logging.info(
-            f"Random Number: {random_number}, Will score text responses: {will_score_all}"
-        )
+        bt.logging.info(f"Random Number: {random_number}, Will score text responses: {will_score_all}")
         return will_score_all
 
     async def call_api(self, prompt: str, provider: str) -> str:
@@ -220,19 +208,13 @@ class TextValidator(BaseValidator):
         scoring_tasks = []
         for (uid, _), api_answer in zip(response_tasks, api_responses):
             if api_answer:
-                response = next(
-                    res for u, res in query_responses if u == uid
-                )  # Find the matching response
+                response = next(res for u, res in query_responses if u == uid)  # Find the matching response
                 # bt.logging.info(f"validator response is {api_answer}")
                 # bt.logging.info(f"Miner response is {response}")
                 d = Differ()
-                difference = "".join(
-                    d.compare(api_answer.splitlines(True), response.splitlines(True))
-                )
+                difference = "".join(d.compare(api_answer.splitlines(True), response.splitlines(True)))
                 bt.logging.info(f"Difference in responses are:\n {difference}")
-                task = cortext.reward.api_score(
-                    api_answer, response, self.weight, self.temperature, self.provider
-                )
+                task = cortext.reward.api_score(api_answer, response, self.weight, self.temperature, self.provider)
                 scoring_tasks.append((uid, task))
 
         scored_responses = await asyncio.gather(*[task for _, task in scoring_tasks])

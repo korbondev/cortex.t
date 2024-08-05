@@ -749,9 +749,10 @@ class StreamMiner:
                     response = await claude_client.chat.completions.create(
                         model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "anthropic/claude-3-opus"),
                         messages=filtered_messages,
-                        extra_body=extra_body,
-                        # temperature=temperature,
+                        extra_body={**{"top_k": top_k}, **extra_body},
+                        temperature=temperature,
                         stream=True,
+                        top_p=top_p,
                         # seed=seed,
                         max_tokens=max_tokens,
                     )

@@ -74,8 +74,12 @@ def load_state_from_file(filename: str):
                 state = json.load(file)
                 load_success = True  # Set flag to true as the operation was successful
                 return state
-            except Exception as e:  # Catch specific exceptions for better error handling
-                bt.logging.error(f"error loading state, deleting and resetting it. Error: {e}")
+            except (
+                Exception
+            ) as e:  # Catch specific exceptions for better error handling
+                bt.logging.error(
+                    f"error loading state, deleting and resetting it. Error: {e}"
+                )
                 os.remove(filename)  # Delete if error
 
     # If the file does not exist or there was an error
@@ -83,8 +87,18 @@ def load_state_from_file(filename: str):
         bt.logging.debug("initialized new global state")
         # Return the default state structure
         return {
-            "text": {"themes": None, "questions": None, "theme_counter": 0, "question_counter": 0},
-            "images": {"themes": None, "questions": None, "theme_counter": 0, "question_counter": 0},
+            "text": {
+                "themes": None,
+                "questions": None,
+                "theme_counter": 0,
+                "question_counter": 0,
+            },
+            "images": {
+                "themes": None,
+                "questions": None,
+                "theme_counter": 0,
+                "question_counter": 0,
+            },
         }
 
 
@@ -124,7 +138,10 @@ def save_state_to_file(state, filename="state.json"):
 async def get_list(list_type, num_questions_needed, theme=None):
     prompts_in_question = {"text_questions": 10, "images_questions": 20}
     list_type_mapping = {
-        "text_questions": {"default": cortext.INSTRUCT_DEFAULT_QUESTIONS, "prompt": "placeholder"},
+        "text_questions": {
+            "default": cortext.INSTRUCT_DEFAULT_QUESTIONS,
+            "prompt": "placeholder",
+        },
         "images_questions": {
             "default": cortext.IMAGE_DEFAULT_QUESTIONS,
             "prompt": f"Provide a python-formatted list of {prompts_in_question[list_type]} creative and detailed scenarios for image generation, each inspired by the theme '{theme}'. The scenarios should be diverse, thoughtful, and possibly out-of-the-box interpretations related to '{theme}'. Each element in the list should be a concise, but a vividly descriptive situation designed to inspire visually rich stories. Format these elements as comma-separated, quote-encapsulated strings in a single Python list.",
@@ -161,12 +178,27 @@ async def get_list(list_type, num_questions_needed, theme=None):
         )
         selected_prompts = random.sample(question_pool, num_questions_to_select)
     else:
-        num_questions_to_select = math.ceil(num_questions_needed / prompts_in_question[list_type])
-        selected_prompts = [list_type_mapping[list_type]["prompt"]] * num_questions_to_select
+        num_questions_to_select = math.ceil(
+            num_questions_needed / prompts_in_question[list_type]
+        )
+        selected_prompts = [
+            list_type_mapping[list_type]["prompt"]
+        ] * num_questions_to_select
 
-    bt.logging.debug(f"num_questions_needed: {num_questions_needed}, " f"list_type: {list_type}, selected_prompts: {selected_prompts}")
+    bt.logging.debug(
+        f"num_questions_needed: {num_questions_needed}, "
+        f"list_type: {list_type}, selected_prompts: {selected_prompts}"
+    )
 
-    tasks = [call_openai([{"role": "user", "content": prompt}], 0.65, "gpt-3.5-turbo", random.randint(1, 10000)) for prompt in selected_prompts]
+    tasks = [
+        call_openai(
+            [{"role": "user", "content": prompt}],
+            0.65,
+            "gpt-3.5-turbo",
+            random.randint(1, 10000),
+        )
+        for prompt in selected_prompts
+    ]
 
     responses = await asyncio.gather(*tasks)
     extracted_lists = []
@@ -183,7 +215,9 @@ async def get_list(list_type, num_questions_needed, theme=None):
                     try:
                         random_seed = random.randint(1, 10000)
                         messages = [{"role": "user", "content": selected_prompts[i]}]
-                        new_answer = await call_openai(messages, 0.85, "gpt-4-0125-preview", random_seed)
+                        new_answer = await call_openai(
+                            messages, 0.85, "gpt-4-0125-preview", random_seed
+                        )
                         new_answer = new_answer.replace("\n", " ") if new_answer else ""
                         new_extracted_list = extract_python_list(new_answer)
                         if new_extracted_list:
@@ -191,18 +225,28 @@ async def get_list(list_type, num_questions_needed, theme=None):
                             break
                         bt.logging.error(f"no list found in {new_answer}")
                     except Exception as e:
-                        bt.logging.error(f"Exception on retry {retry + 1} for prompt '{selected_prompts[i]}': " f"{e}\n{traceback.format_exc()}")
+                        bt.logging.error(
+                            f"Exception on retry {retry + 1} for prompt '{selected_prompts[i]}': "
+                            f"{e}\n{traceback.format_exc()}"
+                        )
         except Exception as e:
-            bt.logging.error(f"Exception in processing initial response for prompt '{selected_prompts[i]}': " f"{e}\n{traceback.format_exc()}")
+            bt.logging.error(
+                f"Exception in processing initial response for prompt '{selected_prompts[i]}': "
+                f"{e}\n{traceback.format_exc()}"
+            )
 
     if not extracted_lists:
-        bt.logging.error("No valid lists found after processing and retries, returning None")
+        bt.logging.error(
+            "No valid lists found after processing and retries, returning None"
+        )
         return None
 
     return extracted_lists
 
 
-async def update_counters_and_get_new_list(category, item_type, num_questions_needed, theme=None):
+async def update_counters_and_get_new_list(
+    category, item_type, num_questions_needed, theme=None
+):
     async def get_items(category, item_type, theme=None):
         if item_type == "themes":
             if category == "images":
@@ -213,7 +257,9 @@ async def update_counters_and_get_new_list(category, item_type, num_questions_ne
             while True:
                 theme = await get_random_theme(category)
                 if theme is not None:
-                    return await get_list(f"{category}_questions", num_questions_needed, theme)
+                    return await get_list(
+                        f"{category}_questions", num_questions_needed, theme
+                    )
 
     async def get_random_theme(category):
         themes = state[category]["themes"]
@@ -234,7 +280,9 @@ async def update_counters_and_get_new_list(category, item_type, num_questions_ne
         if not items:
             items = await get_items(category, item_type, theme)
             state[category][item_type] = items
-            bt.logging.debug(f"Fetched new list for {list_type}, containing {len(items)} items")
+            bt.logging.debug(
+                f"Fetched new list for {list_type}, containing {len(items)} items"
+            )
 
         item = items.pop() if items else None
         if not items:
@@ -247,7 +295,9 @@ async def get_question(category, num_questions_needed):
     if category not in ["text", "images"]:
         raise ValueError("Invalid category. Must be 'text' or 'images'.")
 
-    question = await update_counters_and_get_new_list(category, "questions", num_questions_needed)
+    question = await update_counters_and_get_new_list(
+        category, "questions", num_questions_needed
+    )
     return question
 
 
@@ -266,7 +316,9 @@ def preprocess_string(text: str) -> str:
             in_comment = True
         elif processed_text[i] == '"' and in_comment:
             in_comment = False
-            no_comments_text += processed_text[i]  # Keep the quote that ends the comment
+            no_comments_text += processed_text[
+                i
+            ]  # Keep the quote that ends the comment
             i += 1
             continue
         if not in_comment:
@@ -295,18 +347,28 @@ def preprocess_string(text: str) -> str:
             found_comma_or_bracket = False
 
             while preceding_char_index >= 0:
-                if no_comments_text[preceding_char_index] in "[,":  # Check for comma or opening bracket
+                if (
+                    no_comments_text[preceding_char_index] in "[,"
+                ):  # Check for comma or opening bracket
                     found_comma_or_bracket = True
                     break
-                if no_comments_text[preceding_char_index] not in " \n":  # Ignore spaces and new lines
+                if (
+                    no_comments_text[preceding_char_index] not in " \n"
+                ):  # Ignore spaces and new lines
                     break
                 preceding_char_index -= 1
 
             following_char_index = i + 1
-            while following_char_index < len(no_comments_text) and no_comments_text[following_char_index] in " \n":
+            while (
+                following_char_index < len(no_comments_text)
+                and no_comments_text[following_char_index] in " \n"
+            ):
                 following_char_index += 1
 
-            if found_comma_or_bracket or (following_char_index < len(no_comments_text) and no_comments_text[following_char_index] in "],"):
+            if found_comma_or_bracket or (
+                following_char_index < len(no_comments_text)
+                and no_comments_text[following_char_index] in "],"
+            ):
                 inside_quotes = not inside_quotes
             else:
                 i += 1
@@ -318,7 +380,11 @@ def preprocess_string(text: str) -> str:
 
         if char == " ":
             # Skip spaces if not inside quotes and if the space is not between words
-            if not inside_quotes and (i == 0 or no_comments_text[i - 1] in " ,[" or no_comments_text[i + 1] in " ,]"):
+            if not inside_quotes and (
+                i == 0
+                or no_comments_text[i - 1] in " ,["
+                or no_comments_text[i + 1] in " ,]"
+            ):
                 i += 1
                 continue
 
@@ -328,7 +394,9 @@ def preprocess_string(text: str) -> str:
     cleaned_str = "".join(cleaned_text)
     cleaned_str = re.sub(r"\[\s+", "[", cleaned_str)
     cleaned_str = re.sub(r"\s+\]", "]", cleaned_str)
-    cleaned_str = re.sub(r"\s*,\s*", ", ", cleaned_str)  # Ensure single space after commas
+    cleaned_str = re.sub(
+        r"\s*,\s*", ", ", cleaned_str
+    )  # Ensure single space after commas
 
     start, end = cleaned_str.find("["), cleaned_str.rfind("]")
     if start != -1 and end != -1 and end > start:
@@ -367,9 +435,13 @@ def extract_python_list(text: str):
     return None
 
 
-async def call_openai(messages, temperature, model, seed=1234, max_tokens=2048, top_p=1) -> str:
+async def call_openai(
+    messages, temperature, model, seed=1234, max_tokens=2048, top_p=1
+) -> str:
     for _ in range(2):
-        bt.logging.debug(f"Calling Openai. Temperature = {temperature}, Model = {model}, Seed = {seed},  Messages = {messages}")
+        bt.logging.debug(
+            f"Calling Openai. Temperature = {temperature}, Model = {model}, Seed = {seed},  Messages = {messages}"
+        )
         try:
             response = await client.chat.completions.create(
                 model=model,
@@ -391,7 +463,9 @@ async def call_openai(messages, temperature, model, seed=1234, max_tokens=2048, 
 
 
 async def call_gemini(messages, temperature, model, max_tokens, top_p, top_k):
-    print(f"Calling Gemini. Temperature = {temperature}, Model = {model}, Messages = {messages}")
+    print(
+        f"Calling Gemini. Temperature = {temperature}, Model = {model}, Messages = {messages}"
+    )
     try:
         model = genai.GenerativeModel(model)
         response = model.generate_content(
@@ -440,9 +514,13 @@ async def call_gemini(messages, temperature, model, max_tokens, top_p, top_k):
 #     return None
 
 
-async def call_anthropic(prompt, temperature, model, max_tokens=2048, top_p=1, top_k=10000):
+async def call_anthropic(
+    prompt, temperature, model, max_tokens=2048, top_p=1, top_k=10000
+):
     try:
-        bt.logging.debug(f"Calling Anthropic. Model = {model}, Prompt = {prompt}, Temperature = {temperature}, Max Tokens = {max_tokens}")
+        bt.logging.debug(
+            f"Calling Anthropic. Model = {model}, Prompt = {prompt}, Temperature = {temperature}, Max Tokens = {max_tokens}"
+        )
         completion = await bedrock_client.completions.create(
             model=model,
             max_tokens_to_sample=max_tokens,
@@ -461,7 +539,9 @@ async def call_anthropic(prompt, temperature, model, max_tokens=2048, top_p=1, t
 
 async def call_claude(messages, temperature, model, max_tokens, top_p, top_k):
     try:
-        bt.logging.info(f"calling claude for {messages} with temperature: {temperature}, model: {model}, max_tokens: {max_tokens}, top_p: {top_p}, top_k: {top_k}")
+        bt.logging.info(
+            f"calling claude for {messages} with temperature: {temperature}, model: {model}, max_tokens: {max_tokens}, top_p: {top_p}, top_k: {top_k}"
+        )
         system_prompt = None
         filtered_messages = []
         for message in messages:
@@ -480,13 +560,16 @@ async def call_claude(messages, temperature, model, max_tokens, top_p, top_k):
             kwargs["system"] = system_prompt
 
         message = await claude_client.messages.create(**kwargs)
-        bt.logging.debug(f"validator response is {message.content[0].text}")
+        # bt.logging.debug(f"validator response is {message.content[0].text}")
+        bt.logging.debug("validator response is 'SEE DIFFERENCES BELOW'")
         return message.content[0].text
     except:
         bt.logging.error(f"error in call_claude {traceback.format_exc()}")
 
 
-async def call_stability(prompt, seed, steps, cfg_scale, width, height, samples, sampler):
+async def call_stability(
+    prompt, seed, steps, cfg_scale, width, height, samples, sampler
+):
     ...
     # we dont talk about stability here
     return
@@ -513,7 +596,9 @@ async def call_stability(prompt, seed, steps, cfg_scale, width, height, samples,
 
 # Github unauthorized rate limit of requests per hour is 60. Authorized is 5000.
 def get_version(line_number: int = 22) -> Optional[str]:
-    url = "https://api.github.com/repos/corcel-api/cortex.t/contents/cortext/__init__.py"
+    url = (
+        "https://api.github.com/repos/corcel-api/cortex.t/contents/cortext/__init__.py"
+    )
     response = requests.get(url, timeout=10)
     if not response.ok:
         bt.logging.error("github api call failed")

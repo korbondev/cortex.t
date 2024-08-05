@@ -202,6 +202,32 @@ if not wandb_api_key and not netrc_path.exists():
     raise ValueError("Please log in to wandb using `wandb login` or set the WANDB_API_KEY environment variable.")
 
 
+#  This is the exact openai call from the validator
+async def validator_call_openai(messages, temperature, model, seed=1234, max_tokens=2048, top_p=1, client=None) -> str:
+    if client is None:
+        return None
+    for _ in range(2):
+        bt.logging.debug(f"Calling Openai. Temperature = {temperature}, Model = {model}, Seed = {seed},  Messages = {messages}")
+        try:
+            response = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                seed=seed,
+                max_tokens=max_tokens,
+                top_p=top_p,
+            )
+            response = response.choices[0].message.content
+            bt.logging.trace(f"validator response is {response}")
+            return response
+
+        except Exception as e:
+            bt.logging.error(f"Error when calling OpenAI: {traceback.format_exc()}")
+            await asyncio.sleep(0.5)
+
+    return None
+
+
 class StreamMiner:
     def __init__(self, config=None, axon=None, wallet=None, subtensor=None):
         bt.logging.info("starting stream miner")

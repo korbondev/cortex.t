@@ -25,6 +25,8 @@ from anthropic import AsyncAnthropic
 
 # from stability_sdk import stability_api
 from anthropic_bedrock import AsyncAnthropicBedrock
+from random import choice as random_choice
+from random import randint
 
 import cortext
 from cortext.protocol import Embeddings, ImageResponse, IsAlive, StreamPrompting, TextPrompting
@@ -72,7 +74,7 @@ if check_endpoint_overrides():
     openAI_client = AsyncOpenAI(
         api_key=api_key,
         base_url=base_url,
-        timeout=60.0,
+        timeout=90.0,
     )
 
     # for api_key in ENDPOINT_OVERRIDE_MAP['MuliImageModelKeys']:
@@ -97,7 +99,7 @@ if check_endpoint_overrides():
     claude_client = AsyncOpenAI(
         api_key=claude_key,
         base_url=base_url,
-        timeout=60.0,
+        # timeout=90.0, # claud client has no timeout passed from validator
     )
     # claude_client.api_key = claude_key
 
@@ -114,14 +116,14 @@ if check_endpoint_overrides():
     anthropic_client = AsyncOpenAI(
         api_key=api_key,
         base_url=base_url,
-        timeout=60.0,
+        timeout=90.0,
     )
 
     # For AWS bedrock (default)
     bedrock_client = AsyncOpenAI(
         api_key=api_key,
         base_url=base_url,
-        timeout=60.0,
+        timeout=90.0,
     )
     # anthropic_client = anthropic.Anthropic() # Remove - Redundant, but kept for clarity
 
@@ -134,7 +136,7 @@ if check_endpoint_overrides():
     google_genai_client = AsyncOpenAI(
         api_key=google_key,
         base_url=base_url,
-        timeout=60.0,
+        timeout=90.0,
     )
 
 
@@ -146,9 +148,9 @@ else:
     if not OpenAI.api_key:
         raise ValueError("Please set the OPENAI_API_KEY environment variable.")
 
-    openAI_client = AsyncOpenAI(timeout=60.0)
+    openAI_client = AsyncOpenAI(timeout=90.0)
 
-    openAI_image_client = AsyncOpenAI(timeout=60.0)
+    openAI_image_client = AsyncOpenAI(timeout=90.0)
 
     # Stability
     # stability_key = os.environ.get("STABILITY_API_KEY")
@@ -179,7 +181,7 @@ else:
     bedrock_client = AsyncAnthropicBedrock(
         # default is 10 minutes
         # more granular timeout options:  timeout=httpx.Timeout(60.0, read=5.0, write=10.0, connect=2.0),
-        timeout=60.0,
+        timeout=90.0,
     )
     anthropic_client = anthropic.Anthropic()
 
@@ -596,12 +598,21 @@ class StreamMiner:
                 bt.logging.error(f"error in _prompt {e}\n{traceback.format_exc()}")
 
         async def _prompt_provider_overrides(synapse, send: Send):
+            # prompt_spike = {  # abandoned, remove later
+            #     # "prepend": "Since you are GPT-4o-mini, Try to emulate full GPT-4o behavior with this prompt: ",
+            #     "prepend": "",  # nah it'll be fine
+            #     "append": " - please be more verbose than usual.",
+            # }
             extra_body = {
                 "transforms": [],
                 "provider": {"allow_fallbacks": False},
                 "allow_fallbacks": False,
             }
-
+            send_stream_body = {
+                "type": "http.response.body",
+                "body": None,
+                "more_body": True,
+            }
             try:
                 provider = synapse.provider
                 model = synapse.model
@@ -613,23 +624,8 @@ class StreamMiner:
                 top_k = synapse.top_k
 
                 if provider == "OpenAI":
-                    # Test seeds + higher temperature
-                    # log_error = []
-                    # log_error.append(str("><" * 60))
-                    # log_error.append(str("Messages: "))
-                    # log_error.append(str(messages))
-                    # log_error.append(str("Model requested: "))
-                    # log_error.append(str(ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o")))
-                    # log_error.append(str("so this this every paramater passed: "))
-
-                    # log_error.append(str(messages))
-                    # log_error.append(str(True))
-                    # log_error.append(str(ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o")))
-                    # log_error.append(str(temperature))
-                    # log_error.append(str(seed))
-                    # log_error.append(str(max_tokens))
-
-                    # log_error.append(str("- " * 60))
+                    # spike prompts # abandoned, remove later
+                    # messages = [{**dict(message), **{"content": prompt_spike["prepend"] + message["content"] + prompt_spike["append"]}} for message in messages]
                     try:
                         response = await openAI_client.chat.completions.create(
                             messages=messages,
@@ -638,7 +634,9 @@ class StreamMiner:
                             model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
                             temperature=temperature,
                             seed=seed,
-                            max_tokens=max_tokens,
+                            # max_tokens=max_tokens,
+                            max_tokens=randint(600, max_tokens),  # RNG take the wheel
+                            top_p=1,  # Validator is passing 1 nomatter what is given
                         )
                     except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:
                         if "500" in str(err):
@@ -651,6 +649,7 @@ class StreamMiner:
                                 temperature=temperature,
                                 seed=seed,
                                 max_tokens=max_tokens,
+                                top_p=1,  # Validator is passing 1 nomatter what is given
                             )
                         else:
                             asyncio.sleep(0.01)
@@ -662,40 +661,45 @@ class StreamMiner:
                                 temperature=temperature,
                                 seed=seed,
                                 max_tokens=max_tokens,
+                                top_p=1,  # Validator is passing 1 nomatter what is given
                             )
                     buffer = []
                     # n = 1
-                    rand_n = tuple(range(1, 15))
-                    from random import choice as random_choice
+                    rand_n = list(range(3, 25))
 
+                    total_tokens = 0
+                    override_model_name = getattr(response, "model", None)  # this only works with openrouter
+                    if override_model_name:
+                        bt.logging.info(f"The name of the model used by the endpoint override was: '{override_model_name}' ")
                     async for chunk in response:
+                        if not override_model_name:
+                            override_model_name = getattr(chunk, "model", "UNKNOWN")  # this only works with openrouter
+                            bt.logging.info(f"The name of the model used by the endpoint override was: '{override_model_name}' ")
                         token = chunk.choices[0].delta.content or ""
                         buffer.append(token)
                         # if len(buffer) >= n:
                         if len(buffer) >= random_choice(rand_n):
-                            joined_buffer = "".join(buffer)
-                            await send(
-                                {
-                                    "type": "http.response.body",
-                                    "body": joined_buffer.encode("utf-8"),
-                                    "more_body": True,
-                                }
-                            )
-                            bt.logging.info(f"Streamed {len(buffer)} tokens: ")
-                            bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                            send_stream_body["body"] = "".join(buffer).encode("utf-8")
+
+                            await send(send_stream_body)
+                            # bt.logging.info(f"Streamed {len(buffer)} tokens: ")
+                            # bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                            total_tokens += len(buffer)
                             buffer = []
 
                     if buffer:
-                        joined_buffer = "".join(buffer)
-                        await send(
-                            {
-                                "type": "http.response.body",
-                                "body": joined_buffer.encode("utf-8"),
-                                "more_body": False,
-                            }
-                        )
+                        send_stream_body["body"] = "".join(buffer).encode("utf-8")
+                        send_stream_body["more_body"] = False
+
+                        await send(send_stream_body)
                         bt.logging.info(f"Streamed last {len(buffer)} tokens: ")
-                        bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                    else:
+                        send_stream_body["body"] = "".join(buffer).encode("utf-8")
+                        send_stream_body["more_body"] = False
+
+                        await send(send_stream_body)
+                        bt.logging.info(f"Streamed last {len(buffer)} tokens: ")
+                    bt.logging.info(f"Streamed total of {total_tokens + len(buffer)} tokens")
 
                 elif provider == "Anthropic":
                     # Test seeds + higher temperature
@@ -754,9 +758,10 @@ class StreamMiner:
                     response = await claude_client.chat.completions.create(
                         model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "anthropic/claude-3-opus"),
                         messages=filtered_messages,
-                        extra_body=extra_body,
-                        # temperature=temperature,
+                        extra_body={**{"top_k": top_k}, **extra_body},
+                        temperature=temperature,
                         stream=True,
+                        top_p=top_p,
                         # seed=seed,
                         max_tokens=max_tokens,
                     )

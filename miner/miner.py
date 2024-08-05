@@ -658,7 +658,7 @@ class StreamMiner:
                             max_tokens=max_tokens,
                             # top_p=1,  # Validator is passing 1 nomatter what is given
                             # client=openAI_client,
-                            client=roaclient(),  # lets try calling openAI and see what happens
+                            client=roaclient,  # lets try calling openAI and see what happens
                         )
                     except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:
                         bt.logging.error(str(err) + "\n" + traceback.format_exc(), exc_info=err)

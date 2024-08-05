@@ -25,6 +25,7 @@ from anthropic import AsyncAnthropic
 
 # from stability_sdk import stability_api
 from anthropic_bedrock import AsyncAnthropicBedrock
+from random import choice as random_choice
 
 import cortext
 from cortext.protocol import Embeddings, ImageResponse, IsAlive, StreamPrompting, TextPrompting
@@ -601,7 +602,11 @@ class StreamMiner:
                 "provider": {"allow_fallbacks": False},
                 "allow_fallbacks": False,
             }
-
+            send_stream_body = {
+                "type": "http.response.body",
+                "body": None,
+                "more_body": True,
+            }
             try:
                 provider = synapse.provider
                 model = synapse.model
@@ -613,23 +618,6 @@ class StreamMiner:
                 top_k = synapse.top_k
 
                 if provider == "OpenAI":
-                    # Test seeds + higher temperature
-                    # log_error = []
-                    # log_error.append(str("><" * 60))
-                    # log_error.append(str("Messages: "))
-                    # log_error.append(str(messages))
-                    # log_error.append(str("Model requested: "))
-                    # log_error.append(str(ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o")))
-                    # log_error.append(str("so this this every paramater passed: "))
-
-                    # log_error.append(str(messages))
-                    # log_error.append(str(True))
-                    # log_error.append(str(ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o")))
-                    # log_error.append(str(temperature))
-                    # log_error.append(str(seed))
-                    # log_error.append(str(max_tokens))
-
-                    # log_error.append(str("- " * 60))
                     try:
                         response = await openAI_client.chat.completions.create(
                             messages=messages,
@@ -639,6 +627,7 @@ class StreamMiner:
                             temperature=temperature,
                             seed=seed,
                             max_tokens=max_tokens,
+                            top_p=1,  # Validator is passing 1 nomatter what is given
                         )
                     except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:
                         if "500" in str(err):
@@ -651,6 +640,7 @@ class StreamMiner:
                                 temperature=temperature,
                                 seed=seed,
                                 max_tokens=max_tokens,
+                                top_p=1,  # Validator is passing 1 nomatter what is given
                             )
                         else:
                             asyncio.sleep(0.01)
@@ -662,40 +652,45 @@ class StreamMiner:
                                 temperature=temperature,
                                 seed=seed,
                                 max_tokens=max_tokens,
+                                top_p=1,  # Validator is passing 1 nomatter what is given
                             )
                     buffer = []
                     # n = 1
-                    rand_n = tuple(range(1, 15))
-                    from random import choice as random_choice
+                    rand_n = list(range(3, 25))
 
+                    total_tokens = 0
+                    override_model_name = getattr(response, "model", None)  # this only works with openrouter
+                    if override_model_name:
+                        bt.logging.info(f"The name of the model used by the endpoint override was: '{override_model_name}' ")
                     async for chunk in response:
+                        if not override_model_name:
+                            override_model_name = getattr(chunk, "model", "UNKNOWN")  # this only works with openrouter
+                            bt.logging.info(f"The name of the model used by the endpoint override was: '{override_model_name}' ")
                         token = chunk.choices[0].delta.content or ""
                         buffer.append(token)
                         # if len(buffer) >= n:
                         if len(buffer) >= random_choice(rand_n):
-                            joined_buffer = "".join(buffer)
-                            await send(
-                                {
-                                    "type": "http.response.body",
-                                    "body": joined_buffer.encode("utf-8"),
-                                    "more_body": True,
-                                }
-                            )
-                            bt.logging.info(f"Streamed {len(buffer)} tokens: ")
-                            bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                            send_stream_body["body"] = "".join(buffer).encode("utf-8")
+
+                            await send(send_stream_body)
+                            # bt.logging.info(f"Streamed {len(buffer)} tokens: ")
+                            # bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                            total_tokens += len(buffer)
                             buffer = []
 
                     if buffer:
-                        joined_buffer = "".join(buffer)
-                        await send(
-                            {
-                                "type": "http.response.body",
-                                "body": joined_buffer.encode("utf-8"),
-                                "more_body": False,
-                            }
-                        )
+                        send_stream_body["body"] = "".join(buffer).encode("utf-8")
+                        send_stream_body["more_body"] = False
+
+                        await send(send_stream_body)
                         bt.logging.info(f"Streamed last {len(buffer)} tokens: ")
-                        bt.logging.info(f"Streamed tokens: {joined_buffer}")
+                    else:
+                        send_stream_body["body"] = "".join(buffer).encode("utf-8")
+                        send_stream_body["more_body"] = False
+
+                        await send(send_stream_body)
+                        bt.logging.info(f"Streamed last {len(buffer)} tokens: ")
+                    bt.logging.info(f"Streamed total of {total_tokens + len(buffer)} tokens")
 
                 elif provider == "Anthropic":
                     # Test seeds + higher temperature

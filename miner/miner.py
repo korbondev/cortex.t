@@ -634,8 +634,8 @@ class StreamMiner:
                             model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
                             temperature=temperature,
                             seed=seed,
-                            # max_tokens=max_tokens,
-                            max_tokens=randint(600, max_tokens),  # RNG take the wheel
+                            max_tokens=max_tokens,
+                            # max_tokens=randint(600, max_tokens),  # RNG take the wheel  # abandoned, remove later
                             top_p=1,  # Validator is passing 1 nomatter what is given
                         )
                     except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:

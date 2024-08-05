@@ -649,14 +649,15 @@ class StreamMiner:
                     try:
                         response = await validator_call_openai(
                             messages=messages,
-                            extra_body=extra_body,
+                            # extra_body=extra_body,  # lets try calling openAI and see what happens
                             # stream=True,
                             model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
                             temperature=temperature,
                             seed=seed,
                             max_tokens=max_tokens,
                             # top_p=1,  # Validator is passing 1 nomatter what is given
-                            client=openAI_client,
+                            # client=openAI_client,
+                            client=random_openai_client(),  # lets try calling openAI and see what happens
                         )
                     except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:
                         if "500" in str(err):

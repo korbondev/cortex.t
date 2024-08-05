@@ -402,6 +402,7 @@ async def call_openai(messages, temperature, model, seed=1234, max_tokens=2048, 
             )
             response = response.choices[0].message.content
             # bt.logging.trace(f"validator response is {response}")
+            bt.logging.debug("validator response is 'SEE DIFFERENCES BELOW'")
             return response
 
         except Exception as e:
@@ -501,8 +502,8 @@ async def call_claude(messages, temperature, model, max_tokens, top_p, top_k):
             kwargs["system"] = system_prompt
 
         message = await claude_client.messages.create(**kwargs)
-        # bt.logging.debug(f"validator response is {message.content[0].text}")
-        bt.logging.debug("validator response is 'SEE DIFFERENCES BELOW'")
+        bt.logging.debug(f"validator response is {message.content[0].text}")
+
         return message.content[0].text
     except:
         bt.logging.error(f"error in call_claude {traceback.format_exc()}")

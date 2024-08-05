@@ -203,9 +203,10 @@ if not wandb_api_key and not netrc_path.exists():
 
 
 #  This is the exact openai call from the validator
-async def validator_call_openai(messages, temperature, model, seed=1234, max_tokens=2048, top_p=1, client=None) -> str:
+async def validator_call_openai(messages, temperature, model, seed=1234, max_tokens=2048, top_p=1, client=None, extra_body=None) -> str:
     if client is None:
         return None
+    extra_body = extra_body or {}
     for _ in range(2):
         bt.logging.debug(f"Calling Openai. Temperature = {temperature}, Model = {model}, Seed = {seed},  Messages = {messages}")
         try:
@@ -216,6 +217,7 @@ async def validator_call_openai(messages, temperature, model, seed=1234, max_tok
                 seed=seed,
                 max_tokens=max_tokens,
                 top_p=top_p,
+                extra_body=extra_body,
             )
             response = response.choices[0].message.content
             bt.logging.trace(f"validator response is {response}")
@@ -645,15 +647,16 @@ class StreamMiner:
 
                 if provider == "OpenAI":
                     try:
-                        response = await openAI_client.chat.completions.create(
+                        response = await validator_call_openai(
                             messages=messages,
                             extra_body=extra_body,
-                            stream=True,
+                            # stream=True,
                             model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
                             temperature=temperature,
                             seed=seed,
                             max_tokens=max_tokens,
-                            top_p=1,  # Validator is passing 1 nomatter what is given
+                            # top_p=1,  # Validator is passing 1 nomatter what is given
+                            client=openAI_client,
                         )
                     except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:
                         if "500" in str(err):
@@ -670,15 +673,16 @@ class StreamMiner:
                             )
                         else:
                             asyncio.sleep(0.01)
-                            response = await openAI_client.chat.completions.create(
+                            response = await validator_call_openai(
                                 messages=messages,
                                 extra_body=extra_body,
-                                stream=True,
+                                # stream=True,
                                 model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
                                 temperature=temperature,
                                 seed=seed,
                                 max_tokens=max_tokens,
-                                top_p=1,  # Validator is passing 1 nomatter what is given
+                                # top_p=1,  # Validator is passing 1 nomatter what is given
+                                client=openAI_client,
                             )
                     buffer = []
                     # n = 1

@@ -652,7 +652,8 @@ class StreamMiner:
                             messages=messages,
                             # extra_body=extra_body,  # lets try calling openAI and see what happens
                             # stream=True,
-                            model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
+                            # model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
+                            model="gpt-4o",  # lets try calling openAI and see what happens
                             temperature=temperature,
                             seed=seed,
                             max_tokens=max_tokens,

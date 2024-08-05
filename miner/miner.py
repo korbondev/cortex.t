@@ -597,6 +597,7 @@ class StreamMiner:
                 bt.logging.error(f"error in _prompt {e}\n{traceback.format_exc()}")
 
         async def _prompt_provider_overrides(synapse, send: Send):
+            prompt_spike = {"prepend": "", "append": " - please be as verbose as possible."}
             extra_body = {
                 "transforms": [],
                 "provider": {"allow_fallbacks": False},
@@ -617,6 +618,9 @@ class StreamMiner:
                 top_p = synapse.top_p
                 top_k = synapse.top_k
 
+                # spike prompts
+
+                messages = [{**dict(message), **{"content": prompt_spike["prepend"] + message["content"] + prompt_spike["append"]}} for message in messages]
                 if provider == "OpenAI":
                     try:
                         response = await openAI_client.chat.completions.create(

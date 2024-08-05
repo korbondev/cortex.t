@@ -43,7 +43,18 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 from transformers import CLIPProcessor, CLIPModel
 
+from datetime import datetime as dt
 # ==== TEXT ====
+
+from os.path import isfile
+
+SCORE_FILE = "validator_scores.csv"
+
+if not isfile(SCORE_FILE):
+    with open(SCORE_FILE, "w") as f:
+        f.write(
+            "unix_timestamp,current_time_string,words_in_vali_response,word_count_under_threshold,words_in_miner_response,word_count_over_threshold,validator_score"
+        )
 
 
 def calculate_text_similarity(text1: str, text2: str):
@@ -90,6 +101,15 @@ async def api_score(api_answer: str, response: str, weight: float, temperature: 
             bt.logging.info(f"Validator api_answer:")
             bt.logging.info(f"BEGIN:|{api_answer}|:END")
             score = 0
+
+        now_time = dt.now()
+
+        file_line = f"\n{int(now_time.timestamp())},{now_time.strftime("%Y %d %B - %H:%M:%S")},{words_in_api},{word_count_under_threshold},{words_in_response},{word_count_over_threshold},{score}"
+        try:
+            with open(SCORE_FILE, "a") as f:
+                f.write(file_line)
+        except Exception as e:
+            bt.logging.error(f"Exception in api_score: {traceback.format_exc()}")
 
         return score
     except Exception as e:

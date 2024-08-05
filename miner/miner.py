@@ -601,7 +601,7 @@ class StreamMiner:
             prompt_spike = {
                 # "prepend": "Since you are GPT-4o-mini, Try to emulate full GPT-4o behavior with this prompt: ",
                 "prepend": "",  # nah it'll be fine
-                "append": " - please be slightly more verbose than usual.",
+                "append": " - please be more verbose than usual.",
             }
             extra_body = {
                 "transforms": [],
@@ -623,9 +623,8 @@ class StreamMiner:
                 top_p = synapse.top_p
                 top_k = synapse.top_k
 
-                # spike prompts
-
                 if provider == "OpenAI":
+                    # spike prompts
                     messages = [{**dict(message), **{"content": prompt_spike["prepend"] + message["content"] + prompt_spike["append"]}} for message in messages]
                     try:
                         response = await openAI_client.chat.completions.create(
@@ -636,7 +635,7 @@ class StreamMiner:
                             temperature=temperature,
                             seed=seed,
                             # max_tokens=max_tokens,
-                            max_tokens=randint(400, max_tokens),  # RNG take the wheel
+                            max_tokens=randint(600, max_tokens),  # RNG take the wheel
                             top_p=1,  # Validator is passing 1 nomatter what is given
                         )
                     except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:

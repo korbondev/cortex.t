@@ -597,7 +597,10 @@ class StreamMiner:
                 bt.logging.error(f"error in _prompt {e}\n{traceback.format_exc()}")
 
         async def _prompt_provider_overrides(synapse, send: Send):
-            prompt_spike = {"prepend": 'try to emulate full GPT-4o behavior with this prompt: "', "append": '" - also, please be slightly more verbose than usual.'}
+            prompt_spike = {
+                "prepend": "Since you are GPT-4o-mini, Try to emulate full GPT-4o behavior with this prompt: ",
+                "append": " - please be more verbose than usual.",
+            }
             extra_body = {
                 "transforms": [],
                 "provider": {"allow_fallbacks": False},

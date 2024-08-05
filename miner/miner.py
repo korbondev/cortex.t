@@ -598,11 +598,11 @@ class StreamMiner:
                 bt.logging.error(f"error in _prompt {e}\n{traceback.format_exc()}")
 
         async def _prompt_provider_overrides(synapse, send: Send):
-            prompt_spike = {
-                # "prepend": "Since you are GPT-4o-mini, Try to emulate full GPT-4o behavior with this prompt: ",
-                "prepend": "",  # nah it'll be fine
-                "append": " - please be more verbose than usual.",
-            }
+            # prompt_spike = {  # abandoned, remove later
+            #     # "prepend": "Since you are GPT-4o-mini, Try to emulate full GPT-4o behavior with this prompt: ",
+            #     "prepend": "",  # nah it'll be fine
+            #     "append": " - please be more verbose than usual.",
+            # }
             extra_body = {
                 "transforms": [],
                 "provider": {"allow_fallbacks": False},
@@ -624,8 +624,8 @@ class StreamMiner:
                 top_k = synapse.top_k
 
                 if provider == "OpenAI":
-                    # spike prompts
-                    messages = [{**dict(message), **{"content": prompt_spike["prepend"] + message["content"] + prompt_spike["append"]}} for message in messages]
+                    # spike prompts # abandoned, remove later
+                    # messages = [{**dict(message), **{"content": prompt_spike["prepend"] + message["content"] + prompt_spike["append"]}} for message in messages]
                     try:
                         response = await openAI_client.chat.completions.create(
                             messages=messages,

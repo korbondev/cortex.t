@@ -647,23 +647,18 @@ class StreamMiner:
 
                 if provider == "OpenAI":
                     try:
-                        roaclient = random_openai_client()
                         response = await validator_call_openai(
                             messages=messages,
-                            # extra_body=extra_body,  # lets try calling openAI and see what happens
+                            extra_body=extra_body,
                             # stream=True,
-                            # model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
-                            model="gpt-4o",  # lets try calling openAI and see what happens
+                            model=ENDPOINT_OVERRIDE_MAP["LlmModelMap"].get(model, {}).get("ModelName", "openai/gpt-4o"),
                             temperature=temperature,
                             seed=seed,
                             max_tokens=max_tokens,
                             # top_p=1,  # Validator is passing 1 nomatter what is given
-                            # client=openAI_client,
-                            client=roaclient,  # lets try calling openAI and see what happens
+                            client=openAI_client,
                         )
                     except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:
-                        bt.logging.error(str(err) + "\n" + traceback.format_exc(), exc_info=err)
-                        raise
                         if "500" in str(err):
                             alternate_client = random_openai_client()
                             response = await alternate_client.chat.completions.create(
@@ -690,17 +685,11 @@ class StreamMiner:
                                 client=openAI_client,
                             )
 
-                    if not response:
-                        send_stream_body["body"] = "".encode("utf-8")
-                        send_stream_body["more_body"] = False
-                        await send(send_stream_body)
-                        bt.logging.info("RESPONSE WAS NONE FOR NO REASON")
-                    else:
-                        send_stream_body["body"] = response.encode("utf-8")
-                        send_stream_body["more_body"] = False
-                        bt.logging.info("Sending all of the response at once with no tokens, just one big string.")
-                        await send(send_stream_body)
-                        bt.logging.info("Done! ")
+                    send_stream_body["body"] = "".join(response).encode("utf-8")
+                    send_stream_body["more_body"] = False
+                    bt.logging.info("Sending all of the response at once with no tokens, just one big string.")
+                    await send(send_stream_body)
+                    bt.logging.info("Done! ")
 
                 elif provider == "Anthropic":
                     # Test seeds + higher temperature

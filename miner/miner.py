@@ -597,7 +597,7 @@ class StreamMiner:
                 bt.logging.error(f"error in _prompt {e}\n{traceback.format_exc()}")
 
         async def _prompt_provider_overrides(synapse, send: Send):
-            prompt_spike = {"prepend": "", "append": " - please be as verbose as possible."}
+            prompt_spike = {"prepend": "", "append": " - please be moderately verbose."}
             extra_body = {
                 "transforms": [],
                 "provider": {"allow_fallbacks": False},

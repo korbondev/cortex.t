@@ -315,7 +315,11 @@ class StreamMiner:
                 return True, f"Blacklisted a non registered hotkey's {synapse_type} request from {hotkey}"
 
             # check the stake
-            tao = getattr(self.metagraph.neurons[uid], "S", default=self.metagraph.neurons[uid].stake.tao)
+            try:
+                tao = self.metagraph.neurons[uid].S
+            except AttributeError as e:
+                tao = self.metagraph.neurons[uid].stake.tao
+
             # metagraph.neurons[uid].S
             if tao < blacklist_amt:
                 return True, f"Blacklisted a low stake {synapse_type} request: {tao} < {blacklist_amt} from {hotkey}"

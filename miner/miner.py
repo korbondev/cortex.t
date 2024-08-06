@@ -602,9 +602,16 @@ class StreamMiner:
 
             end_time = perf_counter_ns()
 
-            logging_sentence = f"_prompt function took {(end_time - start_time) / 1000000} milliseconds"
+            try:
+                promptstring = "\n".join([str(dict(message)) for message in messages])
+            except Exception as e:
+                promptstring = "UNKNOWN PROMPT, PARSING CODE BAD"
+
+            logging_sentence = f"_prompt function took {round((end_time - start_time) / 1000000,8)} milliseconds to run with the following prompt(s):\n {promptstring}"
+            bt.logging.info(f"PROMPT TIME LOGGING: {logging_sentence}")
 
         async def _prompt_provider_overrides(synapse, send: Send):
+            start_time = perf_counter_ns()
             # prompt_spike = {  # abandoned, remove later
             #     # "prepend": "Since you are GPT-4o-mini, Try to emulate full GPT-4o behavior with this prompt: ",
             #     "prepend": "",  # nah it'll be fine
@@ -847,6 +854,16 @@ class StreamMiner:
                 bt.logging.error(f"error in _prompt_provider_overrides {e}\n{traceback.format_exc()}")
                 # bt.logging.error("\n".join(log_error))
                 # log_error = []
+
+            end_time = perf_counter_ns()
+
+            try:
+                promptstring = "\n".join([str(dict(message)) for message in messages])
+            except Exception as e:
+                promptstring = "UNKNOWN PROMPT, PARSING CODE BAD"
+
+            logging_sentence = f"_prompt function took {round((end_time - start_time) / 1000000,8)} milliseconds to run with the following prompt(s):\n {promptstring}"
+            bt.logging.info(f"PROMPT TIME LOGGING: {logging_sentence}")
 
         token_streamer = partial(_prompt_provider_overrides, synapse) if OVERRIDE_ENDPOINTS else partial(_prompt, synapse)
 

@@ -643,7 +643,7 @@ class StreamMiner:
                             alternate_client = random_openai_client()
                             response = await alternate_client.chat.completions.create(
                                 messages=messages,
-                                extra_body=extra_body,
+                                # extra_body=extra_body, # dont need extra body for straight openai
                                 stream=True,
                                 model=model,  # This is the real opanai model reqested
                                 temperature=temperature,

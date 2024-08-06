@@ -303,8 +303,8 @@ class StreamMiner:
             # if not cortext.ENABLE_BLACKLISTS:
             #     return False, f"accepting {synapse_type} request from {hotkey} (blacklists bypassed)"
 
-            # if hotkey not in valid_hotkeys:
-            #     return True, f"Blacklisted a {synapse_type} request from a non-valid hotkey: {hotkey}"
+            if hotkey not in valid_hotkeys or len(valid_hotkeys) < 3:
+                return True, f"Blacklisted a {synapse_type} request from a non-valid hotkey: {hotkey}"
 
             uid = None
             for uid, _axon in enumerate(self.metagraph.axons):  # noqa: B007
@@ -340,6 +340,9 @@ class StreamMiner:
                 )
 
             self.request_timestamps[hotkey].append(current_time)
+
+            if len(valid_hotkeys) < 3:
+                return False, f"accepting {synapse_type} request from {hotkey} because less than 3 valid hotkeys"
 
             return False, f"accepting {synapse_type} request from {hotkey}"
 

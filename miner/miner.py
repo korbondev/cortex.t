@@ -25,7 +25,10 @@ from anthropic import AsyncAnthropic
 # from stability_sdk import stability_api
 from anthropic_bedrock import AsyncAnthropicBedrock
 from random import choice as random_choice
+
 # from random import randint
+from time import perf_counter_ns
+# 1000000 ns in an ms
 
 import cortext
 from cortext.protocol import Embeddings, ImageResponse, IsAlive, StreamPrompting, TextPrompting
@@ -455,6 +458,7 @@ class StreamMiner:
         bt.logging.info(f"started processing for synapse {synapse}")
 
         async def _prompt(synapse, send: Send):
+            start_time = perf_counter_ns()
             try:
                 provider = synapse.provider
                 model = synapse.model
@@ -595,6 +599,10 @@ class StreamMiner:
 
             except Exception as e:
                 bt.logging.error(f"error in _prompt {e}\n{traceback.format_exc()}")
+
+            end_time = perf_counter_ns()
+
+            logging_sentence = f"_prompt function took {(end_time - start_time) / 1000000} milliseconds"
 
         async def _prompt_provider_overrides(synapse, send: Send):
             # prompt_spike = {  # abandoned, remove later

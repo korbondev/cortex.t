@@ -1,6 +1,5 @@
 import argparse
 import asyncio
-import base64
 import copy
 import json
 import os
@@ -26,7 +25,7 @@ from anthropic import AsyncAnthropic
 # from stability_sdk import stability_api
 from anthropic_bedrock import AsyncAnthropicBedrock
 from random import choice as random_choice
-from random import randint
+# from random import randint
 
 import cortext
 from cortext.protocol import Embeddings, ImageResponse, IsAlive, StreamPrompting, TextPrompting

@@ -2,14 +2,19 @@ import bittensor as bt
 import asyncio
 import json
 import traceback
-from template.protocol import StreamPrompting, TextPrompting, ImageResponse
+
+try:
+    from template.protocol import StreamPrompting, TextPrompting, ImageResponse
+except Exception as e:
+    print(str(e))
+    from cortext.protocol import StreamPrompting, TextPrompting, ImageResponse
 
 # Assuming initial setup remains the same
-wallet = bt.wallet( name="validator", hotkey="default" )
+wallet = bt.wallet(name="validator", hotkey="default")
 axon = bt.axon(wallet=wallet)
 dendrite = bt.dendrite(wallet=wallet)
-subtensor = bt.subtensor( network = "test")
-metagraph = subtensor.metagraph(netuid = 24 )
+subtensor = bt.subtensor(network="test")
+metagraph = subtensor.metagraph(netuid=24)
 
 # StreamPrompting variables
 question = [{"role": "user", "content": "quick question"}]
@@ -42,21 +47,19 @@ synapse = StreamPrompting(
 # ImageResponse variables
 messages = "a thick white cloud over a river"
 
-synapse = ImageResponse(
-    messages=messages
-)
+synapse = ImageResponse(messages=messages)
 
 print("messages", messages)
 bt.trace()
 response = dendrite.query(metagraph.axons[vali_uid], synapse, deserialize=False, timeout=synapse.timeout)
-print('completion:', response.completion)
+print("completion:", response.completion)
 
 # async def query_miner(synapse):
 #     try:
 #         axon = metagraph.axons[vali_uid]
 #         responses = dendrite.query(
-#             axons=[axon], 
-#             synapse=synapse, 
+#             axons=[axon],
+#             synapse=synapse,
 #             deserialize=False,
 #             timeout=timeout,
 #             streaming=streaming,

@@ -303,7 +303,7 @@ class StreamMiner:
             # if not cortext.ENABLE_BLACKLISTS:
             #     return False, f"accepting {synapse_type} request from {hotkey} (blacklists bypassed)"
 
-            if hotkey not in valid_hotkeys or len(valid_hotkeys) < 3:
+            if hotkey not in valid_hotkeys and len(valid_hotkeys) > 2:
                 return True, f"Blacklisted a {synapse_type} request from a non-valid hotkey: {hotkey}"
 
             uid = None

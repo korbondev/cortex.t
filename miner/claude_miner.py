@@ -13,7 +13,6 @@ import threading
 import time
 import requests
 import traceback
-import requests
 import anthropic
 from abc import ABC, abstractmethod
 from collections import deque
@@ -27,7 +26,8 @@ import wandb
 from config import check_config, get_config
 from openai import AsyncOpenAI, OpenAI
 from PIL import Image
-import stability_sdk.interfaces.gooseai.generation.generation_pb2 as generation
+
+# import stability_sdk.interfaces.gooseai.generation.generation_pb2 as generation
 from anthropic_bedrock import AsyncAnthropicBedrock, HUMAN_PROMPT, AI_PROMPT, AnthropicBedrock
 
 import cortext
@@ -139,8 +139,7 @@ class StreamMiner(ABC):
         # thread.start()
 
     @abstractmethod
-    def config(self) -> bt.config:
-        ...
+    def config(self) -> bt.config: ...
 
     def _prompt(self, synapse: StreamPrompting) -> StreamPrompting:
         return self.prompt(synapse)
@@ -218,8 +217,7 @@ class StreamMiner(ABC):
 
     @classmethod
     @abstractmethod
-    def add_args(cls, parser: argparse.ArgumentParser):
-        ...
+    def add_args(cls, parser: argparse.ArgumentParser): ...
 
     def _prompt(self, synapse: StreamPrompting) -> StreamPrompting:
         return self.prompt(synapse)
@@ -236,16 +234,13 @@ class StreamMiner(ABC):
         return synapse
 
     @abstractmethod
-    def prompt(self, synapse: StreamPrompting) -> StreamPrompting:
-        ...
+    def prompt(self, synapse: StreamPrompting) -> StreamPrompting: ...
 
     @abstractmethod
-    def images(self, synapse: ImageResponse) -> ImageResponse:
-        ...
+    def images(self, synapse: ImageResponse) -> ImageResponse: ...
 
     @abstractmethod
-    def embeddings(self, synapse: Embeddings) -> Embeddings:
-        ...
+    def embeddings(self, synapse: Embeddings) -> Embeddings: ...
 
     def run(self):
         if not self.subtensor.is_hotkey_registered(

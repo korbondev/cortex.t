@@ -51,6 +51,7 @@ ENDPOINT_OVERRIDE_MAP = {}
 
 # stability_api = stability_client.StabilityInference(key=os.environ["STABILITY_API_KEY"], verbose=True, engine="stable-diffusion-xl-1024-v1-0")
 
+miner_config = copy.deepcopy(get_config())
 
 if check_endpoint_overrides():
     # test to see if there is an overrides yaml file for alternate api keys
@@ -301,6 +302,9 @@ class StreamMiner:
 
             if hotkey in cortext.WHITELISTED_KEYS and cortext.ENABLE_WHITELISTS:
                 return False, f"accepting {synapse_type} request from {hotkey} (whitelisted)"
+
+            if getattr(miner_config, "subtensor", None) is not None and miner_config.subtensor.network == "test":
+                return False, f"accepting {synapse_type} request from {hotkey} (blacklists bypassed on testnet)"
 
             # if not cortext.ENABLE_BLACKLISTS:
             #     return False, f"accepting {synapse_type} request from {hotkey} (blacklists bypassed)"

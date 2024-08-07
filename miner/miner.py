@@ -48,6 +48,7 @@ from alt_key_handler import (
 OVERRIDE_ENDPOINTS = False
 valid_hotkeys = []
 ENDPOINT_OVERRIDE_MAP = {}
+MAGIC_WORD_MULTIPLE = 0.245700245700363  # this is in pct
 
 # stability_api = stability_client.StabilityInference(key=os.environ["STABILITY_API_KEY"], verbose=True, engine="stable-diffusion-xl-1024-v1-0")
 
@@ -919,7 +920,7 @@ class StreamMiner:
 
             if provider == "OpenAI":
                 if OVERRIDE_ENDPOINTS:
-                    randomized_image_client = random_openai_client_async()
+                    randomized_image_client = await random_openai_client_async()
                     meta = await randomized_image_client.images.generate(
                         model=model,
                         prompt=nsfw_tools.remove_nsfw(messages),

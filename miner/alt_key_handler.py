@@ -105,3 +105,8 @@ def provider_client_lfu_closure(provider_client_keys: List[str], base_url: str =
             return image_client[0]
 
     return provider_client_lfu_with_random_tie_breaking
+
+
+def results_padding(result_length: int, padding_pct: float) -> str:
+    pad_by = round((padding_pct / 100) * result_length, ndigits=None)
+    return " .".join(["" for _ in range(pad_by + 1)]) + " "

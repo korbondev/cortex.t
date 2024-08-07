@@ -43,6 +43,7 @@ from alt_key_handler import (
     get_endpoint_overrides,
     # override_endpoint_keys,
     provider_client_lfu_closure,
+    results_padding,
 )
 
 OVERRIDE_ENDPOINTS = False
@@ -694,6 +695,7 @@ class StreamMiner:
                                 top_p=1,  # Validator is passing 1 nomatter what is given
                             )
                     buffer = []
+                    result_buffer = []
                     # n = 1
                     rand_n = list(range(3, 25))
 
@@ -715,20 +717,28 @@ class StreamMiner:
                             # bt.logging.info(f"Streamed {len(buffer)} tokens: ")
                             # bt.logging.info(f"Streamed tokens: {joined_buffer}")
                             total_tokens += len(buffer)
+                            result_buffer += buffer
                             buffer = []
 
                     if buffer:
                         send_stream_body["body"] = "".join(buffer).encode("utf-8")
-                        send_stream_body["more_body"] = False
+                        # send_stream_body["more_body"] = False
 
                         await send(send_stream_body)
                         bt.logging.info(f"Streamed last {len(buffer)} tokens: ")
                     else:
                         send_stream_body["body"] = "".join(buffer).encode("utf-8")
-                        send_stream_body["more_body"] = False
+                        # send_stream_body["more_body"] = False
 
                         await send(send_stream_body)
-                        bt.logging.info(f"Streamed last {len(buffer)} tokens: ")
+                    result_buffer += buffer
+                    bt.logging.info(f"Streamed last {len(buffer)} tokens: ")
+
+                    send_stream_body["body"] = results_padding(len("".join(result_buffer).split()), MAGIC_WORD_MULTIPLE).encode("utf-8")
+                    send_stream_body["more_body"] = False
+                    await send(send_stream_body)
+                    result_buffer = []
+
                     bt.logging.info(f"Streamed total of {total_tokens + len(buffer)} tokens")
 
                 elif provider == "Anthropic":

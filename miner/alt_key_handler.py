@@ -63,7 +63,7 @@ def override_endpoint_keys() -> None:
     environ.update(get_endpoint_overrides().get("ENVIRONMENT_KEY", {}))
 
 
-def image_client_lfu_closure(image_client_keys: list[str], base_url: str = "https://api.openai.com/v1") -> Callable[[], AsyncOpenAI]:
+def provider_client_lfu_closure(provider_client_keys: list[str], base_url: str = "https://api.openai.com/v1", timeout: float = 60.0) -> Callable[[], AsyncOpenAI]:
     """
     Returns a closure that creates an LFU (Least Frequently Used) client object with random tie breaking.
 
@@ -78,19 +78,19 @@ def image_client_lfu_closure(image_client_keys: list[str], base_url: str = "http
         Callable[[], AsyncOpenAI]: A closure function that returns the least frequently used AsyncOpenAI client object.
     """
     threadlock = False
-    image_multi_clients = [
+    provider_multi_clients = [
         [
             AsyncOpenAI(
                 api_key=ModelKey,
                 base_url=base_url,
-                timeout=60.0,
+                timeout=timeout,
             ),
             0,
         ]
-        for ModelKey in image_client_keys
+        for ModelKey in provider_client_keys
     ]
 
-    def image_client_lfu_with_random_tie_breaking() -> AsyncOpenAI:
+    def provider_client_lfu_with_random_tie_breaking() -> AsyncOpenAI:
         nonlocal threadlock
         while True:
             if not threadlock:
@@ -98,11 +98,11 @@ def image_client_lfu_closure(image_client_keys: list[str], base_url: str = "http
                 break
             sleep(0.001)
 
-        nonlocal image_multi_clients
+        nonlocal provider_multi_clients
 
-        min_frequency = min(item[1] for item in image_multi_clients)
+        min_frequency = min(item[1] for item in provider_multi_clients)
 
-        least_used_clients = [x for x in image_multi_clients if x[1] == min_frequency]
+        least_used_clients = [x for x in provider_multi_clients if x[1] == min_frequency]
 
         image_client = random_choice(least_used_clients)
 
@@ -110,4 +110,4 @@ def image_client_lfu_closure(image_client_keys: list[str], base_url: str = "http
         threadlock = False
         return image_client[0]
 
-    return image_client_lfu_with_random_tie_breaking
+    return provider_client_lfu_with_random_tie_breaking

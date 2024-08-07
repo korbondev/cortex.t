@@ -42,7 +42,7 @@ from alt_key_handler import (
     check_endpoint_overrides,
     get_endpoint_overrides,
     # override_endpoint_keys,
-    image_client_lfu_closure,
+    provider_client_lfu_closure,
 )
 
 OVERRIDE_ENDPOINTS = False
@@ -79,11 +79,13 @@ if check_endpoint_overrides():
         timeout=90.0,
     )
 
+    random_alt_client = provider_client_lfu_closure([api_key for _ in range(10)], base_url=base_url, timeout=90.0)
+
     # for api_key in ENDPOINT_OVERRIDE_MAP['MuliImageModelKeys']:
     #     image_multi_clients
 
-    random_openai_client = image_client_lfu_closure(
-        image_client_keys=ENDPOINT_OVERRIDE_MAP["MuliImageModelKeys"],
+    random_openai_client = provider_client_lfu_closure(
+        provider_client_keys=ENDPOINT_OVERRIDE_MAP["MuliImageModelKeys"],
         base_url=ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(alt_image_service, {}).get("api", ""),
     )
 
@@ -648,7 +650,8 @@ class StreamMiner:
                     # spike prompts # abandoned, remove later
                     # messages = [{**dict(message), **{"content": prompt_spike["prepend"] + message["content"] + prompt_spike["append"]}} for message in messages]
                     try:
-                        response = await openAI_client.chat.completions.create(
+                        alternate_client = random_alt_client()
+                        response = await alternate_client.chat.completions.create(
                             messages=messages,
                             extra_body=extra_body,
                             stream=True,
@@ -674,7 +677,8 @@ class StreamMiner:
                             )
                         else:
                             asyncio.sleep(0.01)
-                            response = await openAI_client.chat.completions.create(
+                            alternate_client = random_alt_client()
+                            response = await alternate_client.chat.completions.create(
                                 messages=messages,
                                 extra_body=extra_body,
                                 stream=True,

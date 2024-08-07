@@ -720,26 +720,21 @@ class StreamMiner:
                             result_buffer += buffer
                             buffer = []
 
-                    if buffer:
-                        send_stream_body["body"] = "".join(buffer).encode("utf-8")
-                        # send_stream_body["more_body"] = False
+                    send_stream_body["body"] = "".join(buffer).encode("utf-8")
+                    # send_stream_body["more_body"] = False
+                    await send(send_stream_body)
 
-                        await send(send_stream_body)
-                        bt.logging.info(f"Streamed last {len(buffer)} tokens: ")
-                    else:
-                        send_stream_body["body"] = "".join(buffer).encode("utf-8")
-                        # send_stream_body["more_body"] = False
-
-                        await send(send_stream_body)
                     result_buffer += buffer
                     bt.logging.info(f"Streamed last {len(buffer)} tokens: ")
 
                     send_stream_body["body"] = results_padding(len("".join(result_buffer).split()), MAGIC_WORD_MULTIPLE).encode("utf-8")
                     send_stream_body["more_body"] = False
                     await send(send_stream_body)
+
                     result_buffer = []
 
                     bt.logging.info(f"Streamed total of {total_tokens + len(buffer)} tokens")
+                    buffer = []
 
                 elif provider == "Anthropic":
                     # Test seeds + higher temperature

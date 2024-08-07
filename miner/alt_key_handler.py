@@ -1,8 +1,8 @@
 from os import environ, path
 from random import choice as random_choice
-from typing import Callable
-from time import sleep
-
+from typing import Callable, List
+import random
+import asyncio
 from msgspec import yaml
 from sys import argv
 
@@ -63,51 +63,45 @@ def override_endpoint_keys() -> None:
     environ.update(get_endpoint_overrides().get("ENVIRONMENT_KEY", {}))
 
 
-def image_client_lfu_closure(image_client_keys: list[str], base_url: str = "https://api.openai.com/v1") -> Callable[[], AsyncOpenAI]:
+def provider_client_lfu_closure(provider_client_keys: List[str], base_url: str = "https://api.openai.com/v1", timeout: float = 60.0) -> Callable[[], AsyncOpenAI]:
     """
     Returns a closure that creates an LFU (Least Frequently Used) client object with random tie breaking.
 
     The function creates a list of lists, containing a unique AsyncOpenAI client object and its usage frequency.
     The usage frequency is initially set to 0 for all clients.
 
-    The closure function `image_client_lfu_with_random_tie_breaking` calculates the least frequently used client
+    The closure function `provider_client_lfu_with_random_tie_breaking` calculates the least frequently used client
     by finding the minimum usage frequency among all the clients. It selects the clients with the minimum frequency
     and randomly selects one of them. It increments the usage frequency of the selected client by 1.
 
     Returns:
         Callable[[], AsyncOpenAI]: A closure function that returns the least frequently used AsyncOpenAI client object.
     """
-    threadlock = False
-    image_multi_clients = [
+    lock = asyncio.Lock()
+    provider_multi_clients = [
         [
             AsyncOpenAI(
                 api_key=ModelKey,
                 base_url=base_url,
-                timeout=60.0,
+                timeout=timeout,
             ),
             0,
         ]
-        for ModelKey in image_client_keys
+        for ModelKey in provider_client_keys
     ]
 
-    def image_client_lfu_with_random_tie_breaking() -> AsyncOpenAI:
-        nonlocal threadlock
-        while True:
-            if not threadlock:
-                threadlock = True
-                break
-            sleep(0.001)
+    async def provider_client_lfu_with_random_tie_breaking() -> AsyncOpenAI:
+        async with lock:
+            nonlocal provider_multi_clients
 
-        nonlocal image_multi_clients
+            min_frequency = min(item[1] for item in provider_multi_clients)
 
-        min_frequency = min(item[1] for item in image_multi_clients)
+            least_used_clients = [x for x in provider_multi_clients if x[1] == min_frequency]
 
-        least_used_clients = [x for x in image_multi_clients if x[1] == min_frequency]
+            image_client = random.choice(least_used_clients)
 
-        image_client = random_choice(least_used_clients)
+            image_client[1] += 1
 
-        image_client[1] += 1
-        threadlock = False
-        return image_client[0]
+            return image_client[0]
 
-    return image_client_lfu_with_random_tie_breaking
+    return provider_client_lfu_with_random_tie_breaking

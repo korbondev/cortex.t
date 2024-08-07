@@ -1,8 +1,8 @@
 import argparse
 import asyncio
 import copy
-import json
-import os
+from json import JSONDecodeError
+from os import environ, getenv
 import pathlib
 import threading
 import time
@@ -18,7 +18,6 @@ import wandb
 
 # from stability_sdk import client as stability_client
 from config import check_config, get_config
-
 from openai import AsyncOpenAI, OpenAI, OpenAIError
 from anthropic import AsyncAnthropic
 
@@ -49,9 +48,9 @@ from alt_key_handler import (
 OVERRIDE_ENDPOINTS = False
 valid_hotkeys = []
 ENDPOINT_OVERRIDE_MAP = {}
-MAGIC_WORD_MULTIPLE = 0.245700245700363  # this is in pct
+MAGIC_WORD_MULTIPLE = 3.09734513274335  # this is in pct
 
-# stability_api = stability_client.StabilityInference(key=os.environ["STABILITY_API_KEY"], verbose=True, engine="stable-diffusion-xl-1024-v1-0")
+# stability_api = stability_client.StabilityInference(key=environ["STABILITY_API_KEY"], verbose=True, engine="stable-diffusion-xl-1024-v1-0")
 
 miner_config = copy.deepcopy(get_config())
 
@@ -93,7 +92,7 @@ if check_endpoint_overrides():
     )
 
     # Stability
-    # stability_key = os.environ.get("STABILITY_API_KEY")
+    # stability_key = environ.get("STABILITY_API_KEY")
     # if not stability_key:
     #     raise ValueError("Please set the STABILITY_KEY environment variable.")
 
@@ -151,7 +150,7 @@ else:
     # Set up api keys from .env file and initialze clients
 
     # OpenAI
-    OpenAI.api_key = os.environ.get("OPENAI_API_KEY")
+    OpenAI.api_key = environ.get("OPENAI_API_KEY")
     if not OpenAI.api_key:
         raise ValueError("Please set the OPENAI_API_KEY environment variable.")
 
@@ -160,11 +159,11 @@ else:
     openAI_image_client = AsyncOpenAI(timeout=90.0)
 
     # Stability
-    # stability_key = os.environ.get("STABILITY_API_KEY")
+    # stability_key = environ.get("STABILITY_API_KEY")
     # if not stability_key:
     #     raise ValueError("Please set the STABILITY_KEY environment variable.")
 
-    claude_key = os.environ.get("ANTHROPIC_API_KEY")
+    claude_key = environ.get("ANTHROPIC_API_KEY")
     if not claude_key:
         raise ValueError(
             "claude api key not found in environment variables. Go to https://console.anthropic.com/settings/keys to get one. Then set it as ANTHROPIC_API_KEY in your .env"
@@ -180,7 +179,7 @@ else:
 
     # Anthropic
     # Only if using the official claude for access instead of aws bedrock
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = environ.get("ANTHROPIC_API_KEY")
     anthropic_client = anthropic.Anthropic()
     anthropic_client.api_key = api_key
 
@@ -193,7 +192,7 @@ else:
     anthropic_client = anthropic.Anthropic()
 
     # For google/gemini
-    google_key = os.environ.get("GOOGLE_API_KEY")
+    google_key = environ.get("GOOGLE_API_KEY")
     if not google_key:
         raise ValueError("Please set the GOOGLE_API_KEY environment variable.")
 
@@ -202,7 +201,7 @@ else:
 
 # Wandb
 netrc_path = pathlib.Path.home() / ".netrc"
-wandb_api_key = os.getenv("WANDB_API_KEY")
+wandb_api_key = getenv("WANDB_API_KEY")
 bt.logging.info("WANDB_API_KEY is set")
 bt.logging.info("~/.netrc exists:", netrc_path.exists())
 
@@ -668,8 +667,9 @@ class StreamMiner:
                             # max_tokens=randint(600, max_tokens),  # RNG take the wheel  # abandoned, remove later
                             top_p=1,  # Validator is passing 1 nomatter what is given
                         )
-                    except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:
-                        if "500" in str(err):
+                    except OpenAIError as err:
+                        bt.logging.error(f"Error when calling OpenAI: {traceback.format_exc()}")
+                        if "500" in str(err) or "400" in str(err):
                             alternate_client = await random_openai_client_async()
                             response = await alternate_client.chat.completions.create(
                                 messages=messages,
@@ -1069,7 +1069,7 @@ def get_valid_hotkeys(config):
             bt.logging.info(f"total valid hotkeys list = {valid_hotkeys}")
             time.sleep(180)
 
-        except json.JSONDecodeError as e:
+        except JSONDecodeError as e:
             bt.logging.debug(f"JSON decoding error: {e} {run.id}")
 
 

@@ -73,18 +73,18 @@ if check_endpoint_overrides():
 
     base_url = ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(alt_llm_service, {}).get("api", "")
 
-    openAI_client = AsyncOpenAI(
-        api_key=api_key,
-        base_url=base_url,
-        timeout=90.0,
-    )
+    # openAI_client = AsyncOpenAI(
+    #     api_key=api_key,
+    #     base_url=base_url,
+    #     timeout=90.0,
+    # )
 
-    random_alt_client = provider_client_lfu_closure([api_key for _ in range(10)], base_url=base_url, timeout=90.0)
+    random_alt_client_async = provider_client_lfu_closure([api_key for _ in range(10)], base_url=base_url, timeout=90.0)
 
     # for api_key in ENDPOINT_OVERRIDE_MAP['MuliImageModelKeys']:
     #     image_multi_clients
 
-    random_openai_client = provider_client_lfu_closure(
+    random_openai_client_async = provider_client_lfu_closure(
         provider_client_keys=ENDPOINT_OVERRIDE_MAP["MuliImageModelKeys"],
         base_url=ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(alt_image_service, {}).get("api", ""),
     )
@@ -650,7 +650,7 @@ class StreamMiner:
                     # spike prompts # abandoned, remove later
                     # messages = [{**dict(message), **{"content": prompt_spike["prepend"] + message["content"] + prompt_spike["append"]}} for message in messages]
                     try:
-                        alternate_client = random_alt_client()
+                        alternate_client = await random_alt_client_async()
                         response = await alternate_client.chat.completions.create(
                             messages=messages,
                             extra_body=extra_body,
@@ -664,7 +664,7 @@ class StreamMiner:
                         )
                     except (OpenAIError.InternalServerError, OpenAIError.RateLimitError) as err:
                         if "500" in str(err):
-                            alternate_client = random_openai_client()
+                            alternate_client = await random_openai_client_async()
                             response = await alternate_client.chat.completions.create(
                                 messages=messages,
                                 # extra_body=extra_body, # dont need extra body for straight openai
@@ -677,7 +677,7 @@ class StreamMiner:
                             )
                         else:
                             asyncio.sleep(0.01)
-                            alternate_client = random_alt_client()
+                            alternate_client = await random_alt_client_async()
                             response = await alternate_client.chat.completions.create(
                                 messages=messages,
                                 extra_body=extra_body,
@@ -915,7 +915,7 @@ class StreamMiner:
 
             if provider == "OpenAI":
                 if OVERRIDE_ENDPOINTS:
-                    randomized_image_client = random_openai_client()
+                    randomized_image_client = random_openai_client_async()
                     meta = await randomized_image_client.images.generate(
                         model=model,
                         prompt=nsfw_tools.remove_nsfw(messages),

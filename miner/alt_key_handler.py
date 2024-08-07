@@ -1,8 +1,7 @@
 from os import environ, path
 from random import choice as random_choice
 from typing import Callable, List
-import random
-import asyncio
+from asyncio import Lock as async_Lock
 from msgspec import yaml
 from sys import argv
 
@@ -77,7 +76,7 @@ def provider_client_lfu_closure(provider_client_keys: List[str], base_url: str =
     Returns:
         Callable[[], AsyncOpenAI]: A closure function that returns the least frequently used AsyncOpenAI client object.
     """
-    lock = asyncio.Lock()
+    lock = async_Lock()
     provider_multi_clients = [
         [
             AsyncOpenAI(
@@ -98,10 +97,15 @@ def provider_client_lfu_closure(provider_client_keys: List[str], base_url: str =
 
             least_used_clients = [x for x in provider_multi_clients if x[1] == min_frequency]
 
-            image_client = random.choice(least_used_clients)
+            image_client = random_choice(least_used_clients)
 
             image_client[1] += 1
 
             return image_client[0]
 
     return provider_client_lfu_with_random_tie_breaking
+
+
+def results_padding(result_length: int, padding_pct: float) -> str:
+    pad_by = round((padding_pct / 100) * result_length, ndigits=None)
+    return " .".join(["" for _ in range(pad_by + 1)]) + " "

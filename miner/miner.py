@@ -45,8 +45,13 @@ from alt_key_handler import (
     results_padding,
 )
 
-OVERRIDE_ENDPOINTS = False
 valid_hotkeys = []
+
+
+OVERRIDE_ENDPOINTS = False
+ALT_LLM_SERVICE_NAME = "OpenRouter"
+ALT_IMAGE_SERVICE_NAME = "AIMLAPI"
+BACKUP_CLIENT_SERVICE_NAME = "OpenAI"
 ENDPOINT_OVERRIDE_MAP = {}
 MAGIC_WORD_MULTIPLE = 3.09734513274335  # this is in pct
 
@@ -59,8 +64,6 @@ if check_endpoint_overrides():
     # if there is overrides set the enviro variables for all other keys to default placeholders provided in yaml
 
     OVERRIDE_ENDPOINTS = True
-    alt_llm_service = "OpenRouter"
-    alt_image_service = "OpenAI"
 
     print("Overriding endpoints with yaml environment variables")
     # override_endpoint_keys()
@@ -69,26 +72,26 @@ if check_endpoint_overrides():
     # Set up api keys from .env file and initialze clients
 
     # OpenRouter uses OpenAI's API spec
-    api_key = ENDPOINT_OVERRIDE_MAP["ENVIRONMENT_KEY"][ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(alt_llm_service, {}).get("ENVIRONMENT_KEY", "")]
-    # if not api_key:
-    #     raise ValueError("Please set the OPENROUTER_API_KEY environment variable.")
+    api_key = ENDPOINT_OVERRIDE_MAP["ENVIRONMENT_KEY"][ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_LLM_SERVICE_NAME, {}).get("ENVIRONMENT_KEY", "")]
 
-    base_url = ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(alt_llm_service, {}).get("api", "")
+    base_url = ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_LLM_SERVICE_NAME, {}).get("api", "")
 
-    # openAI_client = AsyncOpenAI(
-    #     api_key=api_key,
-    #     base_url=base_url,
-    #     timeout=90.0,
-    # )
+    random_alt_llm_client_async = provider_client_lfu_closure([api_key for _ in range(10)], base_url=base_url, timeout="NOT_GIVEN")
 
-    random_alt_client_async = provider_client_lfu_closure([api_key for _ in range(10)], base_url=base_url, timeout=90.0)
+    api_key = ENDPOINT_OVERRIDE_MAP["ENVIRONMENT_KEY"][ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_IMAGE_SERVICE_NAME, {}).get("ENVIRONMENT_KEY", "")]
 
-    # for api_key in ENDPOINT_OVERRIDE_MAP['MuliImageModelKeys']:
-    #     image_multi_clients
+    base_url = ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_IMAGE_SERVICE_NAME, {}).get("api", "")
 
-    random_openai_client_async = provider_client_lfu_closure(
+    random_alt_image_client_async = provider_client_lfu_closure(
+        [api_key for _ in range(10)],
+        base_url=base_url,
+        timeout="NOT_GIVEN",
+    )
+
+    random_backup_client_async = provider_client_lfu_closure(
         provider_client_keys=ENDPOINT_OVERRIDE_MAP["MuliImageModelKeys"],
-        base_url=ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(alt_image_service, {}).get("api", ""),
+        base_url=ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(BACKUP_CLIENT_SERVICE_NAME, {}).get("api", ""),
+        timeout="NOT_GIVEN",
     )
 
     # Stability
@@ -96,11 +99,11 @@ if check_endpoint_overrides():
     # if not stability_key:
     #     raise ValueError("Please set the STABILITY_KEY environment variable.")
 
-    claude_key = ENDPOINT_OVERRIDE_MAP["ENVIRONMENT_KEY"][ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(alt_llm_service, {}).get("ENVIRONMENT_KEY", "")]
+    claude_key = ENDPOINT_OVERRIDE_MAP["ENVIRONMENT_KEY"][ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_LLM_SERVICE_NAME, {}).get("ENVIRONMENT_KEY", "")]
     if not claude_key:
         raise ValueError("Please set the OPENROUTER_API_KEY environment variable.")
 
-    base_url = ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(alt_llm_service, {}).get("api", "")
+    base_url = ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_LLM_SERVICE_NAME, {}).get("api", "")
 
     claude_client = AsyncOpenAI(
         api_key=claude_key,
@@ -116,7 +119,7 @@ if check_endpoint_overrides():
 
     # Anthropic
     # Only if using the official claude for access instead of aws bedrock
-    api_key = ENDPOINT_OVERRIDE_MAP["ENVIRONMENT_KEY"][ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(alt_llm_service, {}).get("ENVIRONMENT_KEY", "")]
+    api_key = ENDPOINT_OVERRIDE_MAP["ENVIRONMENT_KEY"][ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_LLM_SERVICE_NAME, {}).get("ENVIRONMENT_KEY", "")]
     if not api_key:
         raise ValueError("Please set the OPENROUTER_API_KEY environment variable.")
     anthropic_client = AsyncOpenAI(
@@ -134,7 +137,7 @@ if check_endpoint_overrides():
     # anthropic_client = anthropic.Anthropic() # Remove - Redundant, but kept for clarity
 
     # For google/gemini
-    google_key = ENDPOINT_OVERRIDE_MAP["ENVIRONMENT_KEY"][ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(alt_llm_service, {}).get("ENVIRONMENT_KEY", "")]
+    google_key = ENDPOINT_OVERRIDE_MAP["ENVIRONMENT_KEY"][ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_LLM_SERVICE_NAME, {}).get("ENVIRONMENT_KEY", "")]
     if not google_key:
         raise ValueError("Please set the OPENROUTER_API_KEY environment variable.")
 
@@ -146,7 +149,7 @@ if check_endpoint_overrides():
     )
 
 
-else:
+if not OVERRIDE_ENDPOINTS:
     # Set up api keys from .env file and initialze clients
 
     # OpenAI
@@ -655,7 +658,7 @@ class StreamMiner:
                     # spike prompts # abandoned, remove later
                     # messages = [{**dict(message), **{"content": prompt_spike["prepend"] + message["content"] + prompt_spike["append"]}} for message in messages]
                     try:
-                        alternate_client = await random_alt_client_async()
+                        alternate_client = await random_alt_llm_client_async()
                         response = await alternate_client.chat.completions.create(
                             messages=messages,
                             extra_body=extra_body,
@@ -666,11 +669,13 @@ class StreamMiner:
                             max_tokens=max_tokens,
                             # max_tokens=randint(600, max_tokens),  # RNG take the wheel  # abandoned, remove later
                             top_p=1,  # Validator is passing 1 nomatter what is given
+                            timeout=90,  # Validator is passing 90 nomatter what is given
                         )
                     except OpenAIError as err:
-                        bt.logging.error(f"Error when calling OpenAI: {traceback.format_exc()}")
+                        bt.logging.error(f"Error when calling {ALT_LLM_SERVICE_NAME}: {traceback.format_exc()}")
                         if "500" in str(err) or "400" in str(err):
-                            alternate_client = await random_openai_client_async()
+                            bt.logging.info(f"Falling Back on {BACKUP_CLIENT_SERVICE_NAME} due to : {err} ..error from {ALT_LLM_SERVICE_NAME} ")
+                            alternate_client = await random_backup_client_async()
                             response = await alternate_client.chat.completions.create(
                                 messages=messages,
                                 # extra_body=extra_body, # dont need extra body for straight openai
@@ -680,10 +685,12 @@ class StreamMiner:
                                 seed=seed,
                                 max_tokens=max_tokens,
                                 top_p=1,  # Validator is passing 1 nomatter what is given
+                                timeout=90,  # Validator is passing 90 nomatter what is given
                             )
                         else:
+                            bt.logging.info(f"Trying {ALT_LLM_SERVICE_NAME} a second time due to : {err} ..error from {ALT_LLM_SERVICE_NAME} ")
                             asyncio.sleep(0.01)
-                            alternate_client = await random_alt_client_async()
+                            alternate_client = await random_alt_llm_client_async()
                             response = await alternate_client.chat.completions.create(
                                 messages=messages,
                                 extra_body=extra_body,
@@ -693,6 +700,7 @@ class StreamMiner:
                                 seed=seed,
                                 max_tokens=max_tokens,
                                 top_p=1,  # Validator is passing 1 nomatter what is given
+                                timeout=90,  # Validator is passing 90 nomatter what is given
                             )
                     buffer = []
                     result_buffer = []
@@ -925,14 +933,28 @@ class StreamMiner:
 
             if provider == "OpenAI":
                 if OVERRIDE_ENDPOINTS:
-                    randomized_image_client = await random_openai_client_async()
-                    meta = await randomized_image_client.images.generate(
-                        model=model,
-                        prompt=nsfw_tools.remove_nsfw(messages),
-                        size=size,
-                        quality=quality,
-                        style=style,
-                    )
+                    try:
+                        randomized_image_client = await random_alt_image_client_async()
+                        meta = await randomized_image_client.images.generate(
+                            model=model,
+                            prompt=nsfw_tools.remove_nsfw(messages),
+                            size=size,
+                            quality=quality,
+                            style=style,
+                        )
+                    # except OpenAIError as err:
+                    except Exception as err:
+                        bt.logging.error(f"Error when calling {ALT_IMAGE_SERVICE_NAME}: {traceback.format_exc()}")
+                        if "500" in str(err) or "400" in str(err) or True:  # lets always do this while we make sure it works
+                            bt.logging.info(f"Falling Back on {BACKUP_CLIENT_SERVICE_NAME} due to : {err} ..error from {ALT_IMAGE_SERVICE_NAME} ")
+                            randomized_image_client = await random_backup_client_async()
+                            meta = await randomized_image_client.images.generate(
+                                model=model,
+                                prompt=nsfw_tools.remove_nsfw(messages),
+                                size=size,
+                                quality=quality,
+                                style=style,
+                            )
                 else:
                     meta = await openAI_image_client.images.generate(
                         model=model,

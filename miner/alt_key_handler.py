@@ -77,17 +77,13 @@ def provider_client_lfu_closure(provider_client_keys: List[str], base_url: str =
         Callable[[], AsyncOpenAI]: A closure function that returns the least frequently used AsyncOpenAI client object.
     """
     lock = async_Lock()
-    provider_multi_clients = [
-        [
-            AsyncOpenAI(
-                api_key=ModelKey,
-                base_url=base_url,
-                timeout=timeout,
-            ),
-            0,
-        ]
-        for ModelKey in provider_client_keys
-    ]
+
+    client_kwargs = {"base_url": base_url}
+
+    if timeout != "NOT_GIVEN":
+        client_kwargs["timeout"] = timeout
+
+    provider_multi_clients = [[AsyncOpenAI(**{"api_key": ModelKey, **client_kwargs}), 0] for ModelKey in provider_client_keys]
 
     async def provider_client_lfu_with_random_tie_breaking() -> AsyncOpenAI:
         async with lock:

@@ -73,25 +73,25 @@ if check_endpoint_overrides():
 
     # OpenRouter uses OpenAI's API spec
     api_key = ENDPOINT_OVERRIDE_MAP["ENVIRONMENT_KEY"][ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_LLM_SERVICE_NAME, {}).get("ENVIRONMENT_KEY", "")]
-    # if not api_key:
-    #     raise ValueError("Please set the OPENROUTER_API_KEY environment variable.")
 
     base_url = ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_LLM_SERVICE_NAME, {}).get("api", "")
 
-    # openAI_client = AsyncOpenAI(
-    #     api_key=api_key,
-    #     base_url=base_url,
-    #     timeout=90.0,
-    # )
-
     random_alt_llm_client_async = provider_client_lfu_closure([api_key for _ in range(10)], base_url=base_url, timeout=90.0)
 
-    # for api_key in ENDPOINT_OVERRIDE_MAP['MuliImageModelKeys']:
-    #     image_multi_clients
+    api_key = ENDPOINT_OVERRIDE_MAP["ENVIRONMENT_KEY"][ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_IMAGE_SERVICE_NAME, {}).get("ENVIRONMENT_KEY", "")]
+
+    base_url = ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_IMAGE_SERVICE_NAME, {}).get("api", "")
+
+    random_alt_image_client_async = provider_client_lfu_closure(
+        [api_key for _ in range(10)],
+        base_url=base_url,
+        timeout="NOT_GIVEN",
+    )
 
     random_backup_client_async = provider_client_lfu_closure(
         provider_client_keys=ENDPOINT_OVERRIDE_MAP["MuliImageModelKeys"],
         base_url=ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(BACKUP_CLIENT_SERVICE_NAME, {}).get("api", ""),
+        timeout="NOT_GIVEN",
     )
 
     # Stability

@@ -82,9 +82,15 @@ if check_endpoint_overrides():
 
     base_url = ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(ALT_IMAGE_SERVICE_NAME, {}).get("api", "")
 
+    # random_alt_image_client_async = provider_client_lfu_closure( # turning off mlaiapi for now
+    #     [api_key for _ in range(10)],
+    #     base_url=base_url,
+    #     timeout="NOT_GIVEN",
+    # )
+
     random_alt_image_client_async = provider_client_lfu_closure(
-        [api_key for _ in range(10)],
-        base_url=base_url,
+        provider_client_keys=ENDPOINT_OVERRIDE_MAP["MuliImageModelKeys"],
+        base_url=ENDPOINT_OVERRIDE_MAP["ServiceEndpoint"].get(BACKUP_CLIENT_SERVICE_NAME, {}).get("api", ""),
         timeout="NOT_GIVEN",
     )
 
